@@ -1,21 +1,22 @@
 package main
 
 import (
-	. "github.com/tmilner/monzo-customisation/configuration"
-	. "github.com/tmilner/monzo-customisation/httpclient"
+	"io"
 	"log"
 	"net/http"
-	"io"
+
+	. "github.com/tmilner/monzo-customisation/configuration"
+	. "github.com/tmilner/monzo-customisation/httpclient"
 )
 
 func hello(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "Hello world!")
 }
- 
+
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", hello)
-	http.ListenAndServe(":8081", mux)
+	http.ListenAndServe(":80", mux)
 
 	client := &http.Client{}
 	config, err := New()
@@ -70,16 +71,16 @@ func main() {
 		//}
 		//RankAndPrintMerchants(domain)
 		params := Params{
-			Title: "Testing",
-			Body: "Testy Test",
+			Title:    "Testing",
+			Body:     "Testy Test",
 			ImageUrl: "https://docs.monzo.com/images/logo-46fdcf49.svg",
 		}
 
 		feedItem := &FeedItem{
 			TypeParam: "basic",
 			AccountId: account.Id,
-			Url: "http://tmilner.co.uk",
-			Params: params,
+			Url:       "http://tmilner.co.uk",
+			Params:    params,
 		}
 		log.Printf("Creating a feed item %+v", feedItem)
 		feedErr := CreateFeedItem(client, config, feedItem)
