@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"log"
 	"net/http"
 
@@ -9,20 +8,14 @@ import (
 	. "github.com/tmilner/monzo-customisation/httpclient"
 )
 
-func hello(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "Hello world!")
-}
-
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", hello)
-	http.ListenAndServe(":80", mux)
-
 	client := &http.Client{}
 	config, err := New()
 	if err != nil {
 		log.Fatalln("Config failed to load")
 	}
+
+	SetupWebhookInterface()
 
 	//whoAmIRes, err := httpclient.WhoAmI(client, config)
 	//if err != nil {
