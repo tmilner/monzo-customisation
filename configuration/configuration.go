@@ -9,8 +9,8 @@ type Configuration struct {
 	Authorization string `json:"auth"`
 }
 
-func New() (*Configuration, error) {
-	contents, err := ioutil.ReadFile("config.json")
+func NewConfig() (*Configuration, error) {
+	contents, err := ioutil.ReadFile("./config.json")
 	if err != nil {
 		return nil, err
 	}

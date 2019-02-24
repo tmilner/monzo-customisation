@@ -10,7 +10,7 @@ import (
 
 func main() {
 	client := &http.Client{}
-	config, err := New()
+	config, err := NewConfig()
 	if err != nil {
 		log.Fatalf("Config failed to load %+v", err)
 	}
