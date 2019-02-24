@@ -2,9 +2,9 @@ package httpclient
 
 import (
 	"encoding/json"
-	"github.com/tmilner/monzo-customisation/configuration"
+	. "github.com/tmilner/monzo-customisation/configuration"
+	. "github.com/tmilner/monzo-customisation/domain"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 )
@@ -55,22 +55,88 @@ type AddressResponse struct {
 	ShortFormatted string  `json:"short_formatted"`
 }
 
-func Transactions(client *http.Client, config *configuration.Configuration, accountId string) (*TransactionsResponse, error) {
+func GetTransactions(client *http.Client, config *Configuration, accountId string) (*TransactionsResponse, error) {
 	req, err := http.NewRequest("GET", monzoapi+"/transactions?expand[]=merchant&account_id="+accountId, nil)
 	req.Header.Add("Authorization", "Bearer "+config.Authorization)
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	var result TransactionsResponse
 	err = json.Unmarshal(body, &result)
 
 	return &result, err
+}
+
+func (t *TransactionsResponse) ToDomain() ([]*Transaction, error) {
+	transactions := make([]*Transaction, 0)
+
+	for _, transaction := range t.Transactions {
+		domain, err := transaction.ToDomain()
+		if err != nil {
+			return nil, err
+		}
+
+		transactions = append(transactions, domain)
+	}
+
+	return transactions, nil
+}
+
+func (t *TransactionDetailsResponse) ToDomain() (*Transaction, error) {
+	merchant, err := t.Merchant.ToDomain()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Transaction{
+		AccountBalance: t.AccountBalance,
+		Amount: t.Amount,
+		Created: t.Created,
+		Currency: t.Currency,
+		Description: t.Description,
+		Id: t.Id,
+		Merchant: merchant,
+		Notes: t.Notes,
+		IsLoad: t.IsLoad,
+		Settled: t.Settled,
+		DeclineReason: t.DeclineReason,
+		Category: t.Category,
+	}, nil
+}
+
+func (m *MerchantResponse) ToDomain() (*Merchant, error) {
+	addr, err := m.Address.ToDomain()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Merchant{
+		Created:  m.Created,
+		Id:       m.Id,
+		Logo:     m.Logo,
+		Emoji:    m.Emoji,
+		Name:     m.Name,
+		Category: m.Category,
+		Address:  addr,
+		Atm:      m.Atm,
+	}, nil
+}
+
+func (a *AddressResponse) ToDomain() (*Address, error) {
+	return &Address{
+		Address:   a.Address,
+		City:      a.City,
+		Country:   a.Country,
+		Postcode:  a.Postcode,
+		Region:    a.Region,
+		Formatted: a.Formatted,
+	}, nil
 }

@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/tmilner/monzo-customisation/configuration"
 	"io/ioutil"
 	"log"
@@ -32,13 +33,18 @@ func ListAccounts(client *http.Client, config *configuration.Configuration) (*Ac
 	req.Header.Add("Authorization", "Bearer "+config.Authorization)
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println(err)
+		return nil, err
+	}
+
+	if resp.Status != "200 OK" {
+		log.Printf("Not 200! is %s", resp.Status)
+		return nil, errors.New("not 200")
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	var result AccountListResponse

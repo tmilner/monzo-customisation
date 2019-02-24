@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/tmilner/monzo-customisation/configuration"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
@@ -24,18 +23,18 @@ type LocalSpendResponse struct {
 	Currency   string `json:"currency"`
 }
 
-func Balance(client *http.Client, config *configuration.Configuration, accountId string) (*BalanceResponse, error) {
+func GetBalance(client *http.Client, config *configuration.Configuration, accountId string) (*BalanceResponse, error) {
 	req, err := http.NewRequest("GET", monzoapi+"/balance?account_id="+accountId, nil)
 	req.Header.Add("Authorization", "Bearer "+config.Authorization)
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	var result BalanceResponse

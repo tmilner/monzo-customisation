@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/tmilner/monzo-customisation/configuration"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
@@ -19,13 +18,13 @@ func WhoAmI(client *http.Client, config *configuration.Configuration) (*WhoAmIRe
 	req.Header.Add("Authorization", "Bearer "+config.Authorization)
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	var result WhoAmIResponse

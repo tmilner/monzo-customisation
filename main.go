@@ -1,39 +1,41 @@
 package main
 
 import (
-	"github.com/tmilner/monzo-customisation/configuration"
-	"github.com/tmilner/monzo-customisation/httpclient"
+	. "github.com/tmilner/monzo-customisation/configuration"
+	. "github.com/tmilner/monzo-customisation/httpclient"
 	"log"
 	"net/http"
-	"sort"
 )
 
 func main() {
 	client := &http.Client{}
-	config := configuration.New()
+	config, err := New()
+	if err != nil {
+		log.Fatalln("Config failed to load")
+	}
 
 	//whoAmIRes, err := httpclient.WhoAmI(client, config)
 	//if err != nil {
 	//	log.Println("WhoAmI error", err)
 	//}
 
-	listAccountRes, err := httpclient.ListAccounts(client, config)
+	listAccountRes, err := ListAccounts(client, config)
 	if err != nil {
 		log.Fatalln("ListAccount error", err)
 	}
 
 	log.Println("Retrieving account balances:")
 	for index, account := range listAccountRes.Accounts {
-		balance, err := httpclient.Balance(client, config, account.Id)
+		balance, err := GetBalance(client, config, account.Id)
 		if err != nil {
 			log.Fatalln("Error getting balance", err)
 		}
-		log.Printf("%d Balance for account %s is %d", index, account.Type, balance.Balance)
+		log.Printf("%d GetBalance for account %s is %d", index, account.Type, balance.Balance)
 	}
 
-	pots, err := httpclient.Pots(client, config)
+	pots, err := GetPots(client, config)
 	if err != nil {
-		log.Fatalln("Pots error", err)
+		log.Fatalln("GetPots error", err)
 	}
 
 	log.Println("Retrieving pots:")
@@ -48,49 +50,32 @@ func main() {
 	log.Println("Lets get the transactions for all accounts:")
 
 	for _, account := range listAccountRes.Accounts {
-		transactions, err := httpclient.Transactions(client, config, account.Id)
-		if err != nil {
-			log.Fatalln("Error getting transactions", err)
+		//transactions, err := GetTransactions(client, config, account.Id)
+		//if err != nil {
+		//	log.Fatalln("Error getting transactions", err)
+		//}
+		//
+		//domain, err := transactions.ToDomain()
+		//if err != nil {
+		//	log.Fatalln("Error converting to domain type")
+		//}
+		//RankAndPrintMerchants(domain)
+		params := Params{
+			Title: "Testing",
+			Body: "Testy Test",
+			ImageUrl: "https://docs.monzo.com/images/logo-46fdcf49.svg",
 		}
 
-		var maxSpend float64 = 0
-		var maxIncoming float64 = 0
-
-		merchantCount := make(map[string]int)
-
-		for _, transaction := range transactions.Transactions {
-			if float64(transaction.Amount) < maxSpend {
-				maxSpend = float64(transaction.Amount)
-			}
-			if float64(transaction.Amount) > maxIncoming {
-				maxIncoming = float64(transaction.Amount)
-			}
-			merchantCount[transaction.Merchant.Name]++
+		feedItem := &FeedItem{
+			TypeParam: "basic",
+			AccountId: account.Id,
+			Url: "http://tmilner.co.uk",
+			Params: params,
 		}
-
-		log.Printf("Max income = %f! Max Spend = %f", maxIncoming/100.0, (maxSpend*-1)/100.0)
-		log.Printf("%+v", rank(merchantCount))
+		log.Printf("Creating a feed item %+v", feedItem)
+		feedErr := CreateFeedItem(client, config, feedItem)
+		if feedErr != nil {
+			log.Fatalf("Feed error!! %+v", feedErr)
+		}
 	}
 }
-
-func rank(merchantCounts map[string]int) PairList {
-	pl := make(PairList, len(merchantCounts))
-	i := 0
-	for k, v := range merchantCounts {
-		pl[i] = Pair{k, v}
-		i++
-	}
-	sort.Sort(sort.Reverse(pl))
-	return pl
-}
-
-type Pair struct {
-	Merchant   string
-	VisitCount int
-}
-
-type PairList []Pair
-
-func (p PairList) Len() int           { return len(p) }
-func (p PairList) Less(i, j int) bool { return p[i].VisitCount < p[j].VisitCount }
-func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
