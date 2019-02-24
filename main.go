@@ -15,7 +15,7 @@ func hello(w http.ResponseWriter, r *http.Request) {
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", hello)
-	http.ListenAndServe(":8000", mux)
+	http.ListenAndServe(":8081", mux)
 
 	client := &http.Client{}
 	config, err := New()
