@@ -1,20 +1,23 @@
 package main
 
 import (
+	"github.com/tmilner/monzo-customisation/configuration"
 	"log"
 	"net/http"
+	"os"
 
-	. "github.com/tmilner/monzo-customisation/configuration"
 	. "github.com/tmilner/monzo-customisation/httpclient"
 )
 
 func main() {
 	client := &http.Client{}
-	config, err := NewConfig()
-	if err != nil {
-		log.Fatalf("Config failed to load %+v", err)
+	//config, err := NewConfig()
+	//if err != nil {
+	//	log.Fatalf("Config failed to load %+v", err)
+	//}
+	config := &configuration.Configuration{
+		Authorization: os.Args[1],
 	}
-
 	SetupWebhookInterface()
 
 	//whoAmIRes, err := httpclient.WhoAmI(client, config)
