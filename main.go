@@ -23,8 +23,12 @@ func main() {
 
 	log.SetOutput(f)
 
-	SetupWebhookInterface()
+	go runBasicInfo(client, config)
 
+	SetupWebhookInterface()
+}
+
+func runBasicInfo(client *http.Client, config *configuration.Configuration) {
 	//whoAmIRes, err := httpclient.WhoAmI(client, config)
 	//if err != nil {
 	//	log.Println("WhoAmI error", err)
@@ -72,9 +76,9 @@ func main() {
 		//}
 		//RankAndPrintMerchants(domain)
 		params := Params{
-			Title:    "Testing",
-			Body:     "Testy Test",
-			ImageUrl: "https://docs.monzo.com/images/logo-46fdcf49.svg",
+			Title:    "Starting Service",
+			Body:     "Service is starting",
+			ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 		}
 
 		feedItem := &FeedItem{
