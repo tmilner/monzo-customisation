@@ -21,5 +21,6 @@ func handler(w http.ResponseWriter, req *http.Request) {
 func SetupWebhookInterface() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handler)
+	log.Println("Setting up webhook server")
 	http.ListenAndServe(":80", mux)
 }
