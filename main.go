@@ -12,7 +12,7 @@ func main() {
 	client := &http.Client{}
 	config, err := New()
 	if err != nil {
-		log.Fatalln("Config failed to load")
+		log.Fatalf("Config failed to load %+v", err)
 	}
 
 	SetupWebhookInterface()
