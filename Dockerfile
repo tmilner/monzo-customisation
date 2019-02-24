@@ -8,4 +8,4 @@ ENV AUTH_KEY=$AUTH_KEY_ARG
 ADD . $SRC_DIR
 # Build it:
 RUN cd $SRC_DIR; go build -o monzo-customisation; cp monzo-customisation /app/
-ENTRYPOINT ["./monzo-customisation $AUTH_KEY"]
+ENTRYPOINT ["./monzo-customisation", "$AUTH_KEY"]
