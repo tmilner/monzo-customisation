@@ -19,6 +19,7 @@ func (a *MonzoApi) AuthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Auth_Return received!")
 	code := r.URL.Query().Get("code")
 	stateReturned := r.URL.Query().Get("state")
 
