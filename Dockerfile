@@ -14,6 +14,6 @@ ENV REDIRECT_URL=$REDIRECT_URL_ARG
 
 ADD . $SRC_DIR
 
-RUN cd $SRC_DIR; go build -o monzo-customisation; cp monzo-customisation /app/
+RUN cd $SRC_DIR; go get; go build -o monzo-customisation; cp monzo-customisation /app/
 
 ENTRYPOINT ./monzo-customisation $AUTH_KEY
