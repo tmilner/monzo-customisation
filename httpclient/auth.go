@@ -13,7 +13,7 @@ import (
 var state = uuid.NewV4().String()
 
 func (a *MonzoApi) AuthHandler(w http.ResponseWriter, r *http.Request) {
-	uri := "https://auth.monzo.com/?client_id=" + a.ClientConfig.ClientId + "&redirect_uri=" + a.ClientConfig.RedirectUri + "+&response_type=code&state=" + state
+	uri := "https://auth.monzo.com/?client_id=" + a.ClientConfig.ClientId + "&redirect_uri=" + a.ClientConfig.RedirectUri + "&response_type=code&state=" + state
 
 	http.Redirect(w, r, uri, 303)
 }
