@@ -61,4 +61,6 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 
 	a.Auth = result
 	a.runBasicInfo()
+
+	io.WriteString(w, "Suck it.")
 }

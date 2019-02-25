@@ -31,8 +31,8 @@ func main() {
 func setupWebhookInterface(api *MonzoApi) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/webhook", api.WebhookHandler)
-	mux.HandleFunc("/auth", api.AuthHandler)
 	mux.HandleFunc("/auth_return", api.AuthReturnHandler)
+	mux.HandleFunc("/auth", api.AuthHandler)
 	log.Println("Setting up webhook server")
 	http.ListenAndServe(":80", mux)
 }
