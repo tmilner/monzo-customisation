@@ -2,10 +2,7 @@ package httpclient
 
 import (
 	"encoding/json"
-	. "github.com/tmilner/monzo-customisation/configuration"
 	. "github.com/tmilner/monzo-customisation/domain"
-	"io/ioutil"
-	"net/http"
 	"time"
 )
 
@@ -55,16 +52,8 @@ type AddressResponse struct {
 	ShortFormatted string  `json:"short_formatted"`
 }
 
-func GetTransactions(client *http.Client, config *Configuration, accountId string) (*TransactionsResponse, error) {
-	req, err := http.NewRequest("GET", monzoapi+"/transactions?expand[]=merchant&account_id="+accountId, nil)
-	req.Header.Add("Authorization", "Bearer "+config.Authorization)
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+func (a *MonzoApi) GetTransactions(accountId string) (*TransactionsResponse, error) {
+	body, err := a.processGetRequest("/transactions?expand[]=merchant&account_id=" + accountId)
 	if err != nil {
 		return nil, err
 	}
@@ -98,17 +87,17 @@ func (t *TransactionDetailsResponse) ToDomain() (*Transaction, error) {
 
 	return &Transaction{
 		AccountBalance: t.AccountBalance,
-		Amount: t.Amount,
-		Created: t.Created,
-		Currency: t.Currency,
-		Description: t.Description,
-		Id: t.Id,
-		Merchant: merchant,
-		Notes: t.Notes,
-		IsLoad: t.IsLoad,
-		Settled: t.Settled,
-		DeclineReason: t.DeclineReason,
-		Category: t.Category,
+		Amount:         t.Amount,
+		Created:        t.Created,
+		Currency:       t.Currency,
+		Description:    t.Description,
+		Id:             t.Id,
+		Merchant:       merchant,
+		Notes:          t.Notes,
+		IsLoad:         t.IsLoad,
+		Settled:        t.Settled,
+		DeclineReason:  t.DeclineReason,
+		Category:       t.Category,
 	}, nil
 }
 

@@ -2,9 +2,6 @@ package httpclient
 
 import (
 	"encoding/json"
-	"github.com/tmilner/monzo-customisation/configuration"
-	"io/ioutil"
-	"net/http"
 	"time"
 )
 
@@ -22,22 +19,14 @@ type PotResponse struct {
 	Deleted  bool      `json:"deleted"`
 }
 
-func GetPots(client *http.Client, config *configuration.Configuration) (*PotsResponse, error) {
-	req, err := http.NewRequest("GET", monzoapi+"/pots", nil)
-	req.Header.Add("Authorization", "Bearer "+config.Authorization)
-	resp, err := client.Do(req)
+func (a *MonzoApi) GetPots() (*PotsResponse, error) {
+	body, err := a.processGetRequest("/pots")
 	if err != nil {
 		return nil, err
 	}
 
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var result PotsResponse
+	var result *PotsResponse
 	err = json.Unmarshal(body, &result)
 
-	return &result, err
+	return result, err
 }

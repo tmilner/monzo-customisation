@@ -2,11 +2,6 @@ package httpclient
 
 import (
 	"encoding/json"
-	"errors"
-	"github.com/tmilner/monzo-customisation/configuration"
-	"io/ioutil"
-	"log"
-	"net/http"
 )
 
 type AccountListResponse struct {
@@ -28,28 +23,14 @@ type OwnersResponse struct {
 	PreferredFirstName string `json:"preferred_first_name"`
 }
 
-func ListAccounts(client *http.Client, config *configuration.Configuration) (*AccountListResponse, error) {
-	req, err := http.NewRequest("GET", monzoapi+"/accounts", nil)
-	req.Header.Add("Authorization", "Bearer "+config.Authorization)
-	resp, err := client.Do(req)
+func (a *MonzoApi) ListAccounts() (*AccountListResponse, error) {
+	body, err := a.processGetRequest("/accounts")
+
 	if err != nil {
 		return nil, err
 	}
 
-	if resp.Status != "200 OK" {
-		log.Printf("Not 200! is %s", resp.Status)
-		return nil, errors.New("not 200")
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var result AccountListResponse
-
+	var result *AccountListResponse
 	err = json.Unmarshal(body, &result)
-
-	return &result, err
+	return result, err
 }

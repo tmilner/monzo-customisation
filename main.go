@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/tmilner/monzo-customisation/configuration"
 	"log"
 	"net/http"
 	"os"
@@ -16,85 +15,31 @@ func main() {
 	}
 	defer f.Close()
 
-	log.SetOutput(f)
+	//log.SetOutput(f)
 	log.SetPrefix("[MONZO]")
 
 	log.Println("Starting!")
 
-	client := &http.Client{}
-	config := &configuration.Configuration{
-		Authorization: os.Args[1],
+	if len(os.Args) != 4 {
+		log.Fatalln("Not enough arguments supplied")
 	}
 
-	log.Printf("Config: %+v", config)
+	clientConfig := &ClientConfig{
+		ClientId:     os.Args[1],
+		ClientSecret: os.Args[2],
+		RedirectUri:  os.Args[3] + "/auth_return",
+	}
 
-	go runBasicInfo(client, config)
-	SetupWebhookInterface()
+	monzoApi := CreateMonzoApi(clientConfig)
+
+	setupWebhookInterface(monzoApi)
 }
 
-func runBasicInfo(client *http.Client, config *configuration.Configuration) {
-	//whoAmIRes, err := httpclient.WhoAmI(client, config)
-	//if err != nil {
-	//	log.Println("WhoAmI error", err)
-	//}
-
-	listAccountRes, err := ListAccounts(client, config)
-	if err != nil {
-		log.Fatalln("ListAccount error", err)
-	}
-
-	log.Println("Retrieving account balances:")
-	for index, account := range listAccountRes.Accounts {
-		balance, err := GetBalance(client, config, account.Id)
-		if err != nil {
-			log.Fatalln("Error getting balance", err)
-		}
-		log.Printf("%d GetBalance for account %s is %d", index, account.Type, balance.Balance)
-	}
-
-	pots, err := GetPots(client, config)
-	if err != nil {
-		log.Fatalln("GetPots error", err)
-	}
-
-	log.Println("Retrieving pots:")
-	for index, pot := range pots.Pots {
-		var deleted = "active"
-		if pot.Deleted {
-			deleted = "deleted"
-		}
-		log.Printf("%d: Found a %s pot called %s, its got a balence of %d and is currently using the style %s", index, deleted, pot.Name, pot.Balance, pot.Style)
-	}
-
-	log.Println("Lets get the transactions for all accounts:")
-
-	for _, account := range listAccountRes.Accounts {
-		//transactions, err := GetTransactions(client, config, account.Id)
-		//if err != nil {
-		//	log.Fatalln("Error getting transactions", err)
-		//}
-		//
-		//domain, err := transactions.ToDomain()
-		//if err != nil {
-		//	log.Fatalln("Error converting to domain type")
-		//}
-		//RankAndPrintMerchants(domain)
-		params := Params{
-			Title:    "Starting Service",
-			Body:     "Service is starting",
-			ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
-		}
-
-		feedItem := &FeedItem{
-			TypeParam: "basic",
-			AccountId: account.Id,
-			Url:       "http://tmilner.co.uk",
-			Params:    params,
-		}
-		log.Printf("Creating a feed item %+v", feedItem)
-		feedErr := CreateFeedItem(client, config, feedItem)
-		if feedErr != nil {
-			log.Fatalf("Feed error!! %+v", feedErr)
-		}
-	}
+func setupWebhookInterface(api *MonzoApi) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/webhook", api.WebhookHandler)
+	mux.HandleFunc("/auth", api.AuthHandler)
+	mux.HandleFunc("/auth_return", api.AuthReturnHandler)
+	log.Println("Setting up webhook server")
+	http.ListenAndServe(":80", mux)
 }
