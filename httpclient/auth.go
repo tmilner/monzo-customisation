@@ -24,6 +24,8 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	stateReturned := r.URL.Query().Get("state")
 
+	log.Printf("Got code: %s", code)
+
 	if stateReturned != state {
 		log.Println("State token is not correct!")
 		io.WriteString(w, "Fuck Off.")
@@ -43,6 +45,10 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error posting for token")
 		io.WriteString(w, "Error")
 		return
+	}
+
+	if res.Status != "200 OK" {
+		log.Printf("Auth response is not 200. Is %+v", res.Status)
 	}
 
 	defer res.Body.Close()
