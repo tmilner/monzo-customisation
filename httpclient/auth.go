@@ -56,7 +56,7 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 	var result *AuthResponse
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		log.Printf("Unable to unmarshal auth response: %+v", body)
+		log.Printf("Unable to unmarshal auth response: %+v", string(body))
 		return
 	}
 
