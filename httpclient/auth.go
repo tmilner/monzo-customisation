@@ -27,6 +27,7 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 	if stateReturned != state {
 		log.Println("State token is not correct!")
 		io.WriteString(w, "Fuck Off.")
+		return
 	}
 
 	client := &http.Client{}
