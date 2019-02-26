@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/justinas/alice"
+	"github.com/justinas/nosurf"
 	"log"
 	"net/http"
 	"os"
@@ -31,7 +32,7 @@ func main() {
 }
 
 func setupWebhookInterface(api *MonzoApi) {
-	errorChain := alice.New(loggerHandler, recoverHandler)
+	errorChain := alice.New(loggerHandler, recoverHandler, timeoutHandler, nosurf.NewPure)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/webhook", api.WebhookHandler)
@@ -60,4 +61,8 @@ func recoverHandler(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
+}
+
+func timeoutHandler(h http.Handler) http.Handler {
+	return http.TimeoutHandler(h, 1*time.Second, "timed out")
 }
