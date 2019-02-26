@@ -1,9 +1,11 @@
 package main
 
 import (
+	"github.com/justinas/alice"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	. "github.com/tmilner/monzo-customisation/httpclient"
 )
@@ -29,10 +31,33 @@ func main() {
 }
 
 func setupWebhookInterface(api *MonzoApi) {
+	errorChain := alice.New(loggerHandler, recoverHandler)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/webhook", api.WebhookHandler)
 	mux.HandleFunc("/auth_return", api.AuthReturnHandler)
 	mux.HandleFunc("/auth", api.AuthHandler)
 	log.Println("Setting up webhook server")
-	http.ListenAndServe(":80", mux)
+	http.ListenAndServe(":80", errorChain.Then(mux))
+}
+
+func loggerHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		h.ServeHTTP(w, r)
+		log.Printf("new request: %s %s %v", r.Method, r.URL.Path, time.Since(start))
+	})
+}
+
+func recoverHandler(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("panic: %+v", err)
+				http.Error(w, http.StatusText(500), 500)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
 }
