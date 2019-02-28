@@ -40,6 +40,8 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 	form.Add("client_secret", a.ClientConfig.ClientSecret)
 	form.Add("code", code)
 
+	log.Printf("Form values %+v", form)
+
 	res, err := client.PostForm("https://api.monzo.com/oauth2/token", form)
 	if err != nil {
 		log.Println("Error posting for token")
