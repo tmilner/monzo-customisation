@@ -39,6 +39,7 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 	form.Add("client_id", a.ClientConfig.ClientId)
 	form.Add("client_secret", a.ClientConfig.ClientSecret)
 	form.Add("code", code)
+	form.Add("redirect_uri", a.ClientConfig.RedirectUri)
 
 	log.Printf("Form values %+v", form)
 
