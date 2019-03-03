@@ -4,7 +4,6 @@ import (
 	"github.com/justinas/alice"
 	"github.com/justinas/nosurf"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -47,14 +46,6 @@ func setupWebhookInterface(api *MonzoApi) {
 
 func genericIgnore(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		log.Println("Dodgy request on /! Body failed to parse")
-
-	} else {
-		log.Printf("Dodgy request on /! Body: %s", string(body))
-	}
-
 	_, _ = io.WriteString(w, "Get off my server you prick. You wont find anything here.")
 }
 
@@ -67,7 +58,7 @@ func loggerHandler(h http.Handler) http.Handler {
 }
 
 func recoverHandler(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
 				log.Printf("panic: %+v", err)
@@ -75,8 +66,7 @@ func recoverHandler(next http.Handler) http.Handler {
 			}
 		}()
 		next.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
+	})
 }
 
 func timeoutHandler(h http.Handler) http.Handler {

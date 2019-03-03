@@ -22,15 +22,6 @@ type ClientConfig struct {
 	RedirectUri  string
 }
 
-type AuthResponse struct {
-	AccessToken  string `json:"access_token"`
-	ClientId     string `json:"client_id"`
-	Expiry       int32  `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	UserId       string `json:"user_id"`
-}
-
 func CreateMonzoApi(config *ClientConfig) *MonzoApi {
 	client := &http.Client{}
 

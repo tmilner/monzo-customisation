@@ -15,15 +15,16 @@ type TransactionResponse struct {
 }
 
 type TransactionDetailsResponse struct {
-	AccountBalance int64            `json:"account_balance"`
+	AccountId      string           `json:"account_id,omitempty"`
+	AccountBalance int64            `json:"account_balance,omitempty"`
 	Amount         int64            `json:"amount"`
 	Created        time.Time        `json:"created"`
 	Currency       string           `json:"currency"`
 	Description    string           `json:"description"`
 	Id             string           `json:"id"`
 	Merchant       MerchantResponse `json:"merchant,omitempty"`
-	Notes          string           `json:"notes"`
-	IsLoad         bool             `json:"is_lode"`
+	Notes          string           `json:"notes,omitempty"`
+	IsLoad         bool             `json:"is_load"`
 	Settled        string           `json:"settled"`
 	DeclineReason  string           `json:"decline_reason,omitempty"`
 	Category       string           `json:"category"`
@@ -37,7 +38,7 @@ type MerchantResponse struct {
 	Name     string          `json:"name"`
 	Category string          `json:"category"`
 	Address  AddressResponse `json:"address"`
-	Atm      bool            `json:"atm"`
+	Atm      bool            `json:"atm,omitempty"`
 }
 
 type AddressResponse struct {
@@ -48,8 +49,8 @@ type AddressResponse struct {
 	Longitude      float64 `json:"longitude"`
 	Postcode       string  `json:"postcode"`
 	Region         string  `json:"region"`
-	Formatted      string  `json:"formatted"`
-	ShortFormatted string  `json:"short_formatted"`
+	Formatted      string  `json:"formatted,omitempty"`
+	ShortFormatted string  `json:"short_formatted,omitempty"`
 }
 
 func (a *MonzoApi) GetTransactions(accountId string) (*TransactionsResponse, error) {
