@@ -19,7 +19,7 @@ func extendAuth(api *MonzoApi) {
 	for {
 		select {
 		case <-ticker.C:
-			api.RefreshAuth()
+			_ = api.RefreshAuth()
 		}
 	}
 }
@@ -64,7 +64,7 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 
 	res, err := client.PostForm("https://api.monzo.com/oauth2/token", form)
 	if err != nil {
-		log.Printf("Error posting for token %+v", err)
+		log.Printf("Error posting for token! Error: %+v", err)
 		_, _ = io.WriteString(w, "Something is wrong")
 		return
 	}
