@@ -13,7 +13,7 @@ import (
 )
 
 var state = uuid.NewV4().String()
-var ticker = time.NewTicker(10 * time.Minute)
+var ticker = time.NewTicker(2 * time.Hour)
 
 func extendAuth(api *MonzoApi) {
 	for {
@@ -64,13 +64,14 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 
 	res, err := client.PostForm("https://api.monzo.com/oauth2/token", form)
 	if err != nil {
-		log.Println("Error posting for token")
-		_, _ = io.WriteString(w, "Error")
+		log.Printf("Error posting for token %+v", err)
+		_, _ = io.WriteString(w, "Something is wrong")
 		return
 	}
 
 	if res.Status != "200 OK" {
 		log.Printf("Auth response is not 200. Is %+v", res.Status)
+		return
 	}
 
 	defer res.Body.Close()
