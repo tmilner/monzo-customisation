@@ -73,7 +73,7 @@ func (a *MonzoApi) runBasicInfo() {
 		if !account.Closed {
 			balance, err := a.GetBalance(account.Id)
 			if err != nil {
-				log.Println("Error getting balance", err)
+				log.Printf("Error getting balance: %+v", err)
 			}
 			log.Printf("Balance for account %s is %d", account.Type, balance.Balance)
 
@@ -89,8 +89,8 @@ func (a *MonzoApi) runBasicInfo() {
 			//RankAndPrintMerchants(domain)
 
 			params := Params{
-				Title:    "Starting Service",
-				Body:     "Service is starting",
+				Title:    "tmilner.co.uk Authenticated!",
+				Body:     "Woop Woop",
 				ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 			}
 
@@ -100,10 +100,10 @@ func (a *MonzoApi) runBasicInfo() {
 				Url:       "http://tmilner.co.uk",
 				Params:    params,
 			}
-			log.Printf("Creating a feed item %+v", feedItem)
+			log.Printf("Creating a feed item: %+v", feedItem)
 			feedErr := a.CreateFeedItem(feedItem)
 			if feedErr != nil {
-				log.Println("Feed error!! %+v", feedErr)
+				log.Printf("Feed error: %+v", feedErr)
 			}
 		}
 	}
