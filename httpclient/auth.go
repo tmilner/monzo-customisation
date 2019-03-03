@@ -62,8 +62,6 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 	form.Add("code", code)
 	form.Add("redirect_uri", a.ClientConfig.RedirectUri)
 
-	log.Printf("Form values %+v", form)
-
 	res, err := client.PostForm("https://api.monzo.com/oauth2/token", form)
 	if err != nil {
 		log.Println("Error posting for token")
@@ -98,6 +96,8 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *MonzoApi) RefreshAuth() error {
+	log.Println("Refreshing Auth")
+
 	client := &http.Client{}
 
 	form := url.Values{}
@@ -106,11 +106,9 @@ func (a *MonzoApi) RefreshAuth() error {
 	form.Add("client_secret", a.ClientConfig.ClientSecret)
 	form.Add("refresh_token", a.Auth.RefreshToken)
 
-	log.Printf("Form values %+v", form)
-
 	res, err := client.PostForm("https://api.monzo.com/oauth2/token", form)
 	if err != nil {
-		log.Println("Error posting for token")
+		log.Printf("Error posting for token %+v", err)
 		return err
 	}
 
