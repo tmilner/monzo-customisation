@@ -27,7 +27,36 @@ func (a *MonzoApi) WebhookHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	log.Printf("Recieved new transaction! %+v", result)
+	go a.handleWebhook(&result)
 	_, _ = io.WriteString(w, "Suck it.")
+}
+
+func (a *MonzoApi) handleWebhook(w *WebhookResponse) {
+	var params *Params
+	if w.Data.Amount > 50 {
+		params = &Params{
+			Title:    "Spending a bit much aren't we?",
+			Body:     "Tut tut 💸💸💸💸💸",
+			ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
+		}
+	} else if w.Data.AccountBalance < 50 {
+		params = &Params{
+			Title:    "YOURE POOR STOP SPENDING MONEY",
+			Body:     "GOD DAMN IT YOU FOOL 💸💸💸💸💸",
+			ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
+		}
+	}
+
+	if params != nil {
+		feedItem := &FeedItem{
+			AccountId: w.Data.AccountId,
+			TypeParam: "basic",
+			Url:       "http://tmilner.co.uk",
+			Params:    *params,
+		}
+
+		_ = a.CreateFeedItem(feedItem)
+	}
 }
 
 func (a *MonzoApi) RegisterWebhook(accountId string) error {
