@@ -24,7 +24,9 @@ func main() {
 	clientConfig := &ClientConfig{
 		ClientId:     os.Args[1],
 		ClientSecret: os.Args[2],
+		URI:          os.Args[3],
 		RedirectUri:  os.Args[3] + "/auth_return",
+		WebhookURI:   os.Args[3] + "/webhook",
 	}
 
 	monzoApi := CreateMonzoApi(clientConfig)

@@ -19,6 +19,8 @@ type MonzoApi struct {
 type ClientConfig struct {
 	ClientId     string
 	ClientSecret string
+	URI          string
+	WebhookURI   string
 	RedirectUri  string
 }
 
@@ -104,6 +106,11 @@ func (a *MonzoApi) runBasicInfo() {
 			feedErr := a.CreateFeedItem(feedItem)
 			if feedErr != nil {
 				log.Printf("Feed error: %+v", feedErr)
+			}
+
+			err = a.RegisterWebhook(account.Id)
+			if err != nil {
+				log.Printf("Error creting webhook: %+v", err)
 			}
 		}
 	}
