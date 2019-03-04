@@ -49,7 +49,7 @@ func (a *MonzoApi) RegisterWebhook(accountId string) error {
 
 	res, lastErr := a.Client.Do(req)
 
-	if res.Status != "200 OK" && res.Status != "201 Created" {
+	if (res.Status != "200 OK" && res.Status != "201 Created") || lastErr != nil {
 		defer res.Body.Close()
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
@@ -61,5 +61,7 @@ func (a *MonzoApi) RegisterWebhook(accountId string) error {
 		return errors.New("not 200 or 201")
 	}
 
-	return lastErr
+	log.Println("Registered webhook")
+
+	return nil
 }
