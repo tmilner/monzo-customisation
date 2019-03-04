@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
-	"github.com/justinas/nosurf"
 	"io"
 	"log"
 	"net/http"
@@ -36,7 +35,7 @@ func main() {
 }
 
 func setupWebhookInterface(api *MonzoApi) {
-	errorChain := alice.New(loggerHandler, recoverHandler, timeoutHandler, nosurf.NewPure)
+	errorChain := alice.New(loggerHandler, recoverHandler, timeoutHandler)
 
 	mux := mux.NewRouter()
 	mux.HandleFunc("/", genericIgnore)
