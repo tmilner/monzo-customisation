@@ -55,7 +55,7 @@ func loggerHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		h.ServeHTTP(w, r)
-		log.Printf("new request: %s %s %v (from: %s)", r.Method, r.URL.Path, time.Since(start), r.RemoteAddr)
+		log.Printf("new request: %s %s %v (from: %s)", r.Method, r.URL.Path, time.Since(start), r.Header.Get("X-Real-Ip"))
 	})
 }
 

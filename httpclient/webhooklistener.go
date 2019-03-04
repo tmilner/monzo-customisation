@@ -17,10 +17,8 @@ type WebhookResponse struct {
 }
 
 func (a *MonzoApi) WebhookHandler(w http.ResponseWriter, req *http.Request) {
-	log.Printf("Webhook recieved!: %+v", req)
-
 	decoder := json.NewDecoder(req.Body)
-	var result TransactionsResponse
+	var result WebhookResponse
 	err := decoder.Decode(&result)
 
 	if err != nil {
