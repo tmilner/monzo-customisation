@@ -28,21 +28,16 @@ func (a *MonzoApi) WebhookHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	log.Printf("Recieved new transaction! %+v", result)
 	go a.handleWebhook(&result)
+	w.WriteHeader(http.StatusOK)
 	_, _ = io.WriteString(w, "Suck it.")
 }
 
 func (a *MonzoApi) handleWebhook(w *WebhookResponse) {
 	var params *Params
-	if w.Data.Amount > 50 {
+	if w.Data.Amount > 5000 {
 		params = &Params{
 			Title:    "Spending a bit much aren't we?",
 			Body:     "Tut tut 💸💸💸💸💸",
-			ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
-		}
-	} else if w.Data.AccountBalance < 50 {
-		params = &Params{
-			Title:    "YOURE POOR STOP SPENDING MONEY",
-			Body:     "GOD DAMN IT YOU FOOL 💸💸💸💸💸",
 			ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 		}
 	}
