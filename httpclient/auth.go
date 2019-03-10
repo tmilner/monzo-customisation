@@ -101,15 +101,20 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *MonzoApi) saveUserAndAccounts(response *AuthResponse, usersLocked bool) error {
-	accountRes, err := a.ListAccounts(response.UserId)
-	if err != nil {
-		log.Printf("Failed to get account info for authorised account %+v", err)
-		return errors.New("failed to get account info")
+	if !usersLocked {
+		a.usersLock.Lock()
 	}
 	user := &User{
 		id:       response.UserId,
 		auth:     response,
 		accounts: make([]*Account, 0),
+	}
+	a.users[response.UserId] = user
+
+	accountRes, err := a.ListAccounts(response.UserId)
+	if err != nil {
+		log.Printf("Failed to get account info for authorised account %+v", err)
+		return errors.New("failed to get account info")
 	}
 
 	for _, acc := range accountRes.Accounts {
@@ -138,9 +143,6 @@ func (a *MonzoApi) saveUserAndAccounts(response *AuthResponse, usersLocked bool)
 		}
 	}
 
-	if !usersLocked {
-		a.usersLock.Lock()
-	}
 	a.users[response.UserId] = user
 	if !usersLocked {
 		a.usersLock.Unlock()
