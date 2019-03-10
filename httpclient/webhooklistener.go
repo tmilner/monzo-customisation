@@ -33,42 +33,48 @@ func (a *MonzoApi) WebhookHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (a *MonzoApi) handleWebhook(w *WebhookResponse) {
-	var params *Params
-	if w.Data.Amount > 5000 {
-		params = &Params{
-			Title:    "Spending a bit much aren't we?",
-			Body:     "Tut tut 💸💸💸💸💸",
-			ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
-		}
-	}
+	if _, found := a.processedTransactions.Load(w.Data.Id); !found {
+		a.processedTransactions.Store(w.Data.Id, w.Data)
+		var params *Params
 
-	if params != nil {
-		feedItem := &FeedItem{
-			AccountId: w.Data.AccountId,
-			TypeParam: "basic",
-			Url:       "http://tmilner.co.uk",
-			Params:    *params,
+		if w.Data.Amount < -5000 {
+			params = &Params{
+				Title:    "Spending a bit much aren't we?",
+				Body:     "Tut tut 💸💸💸💸💸",
+				ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
+			}
 		}
 
-		_ = a.CreateFeedItem(feedItem)
+		if params != nil {
+			feedItem := &FeedItem{
+				AccountId: w.Data.AccountId,
+				TypeParam: "basic",
+				Url:       "http://tmilner.co.uk",
+				Params:    *params,
+			}
+
+			_ = a.CreateFeedItem(feedItem)
+		}
+
 	}
+
 }
 
 func (a *MonzoApi) RegisterWebhook(accountId string) error {
 	form := url.Values{}
 	form.Add("account_id", accountId)
-	form.Add("url", a.ClientConfig.WebhookURI)
+	form.Add("url", a.clientConfig.WebhookURI)
 
-	req, err := http.NewRequest("POST", a.URL+"/webhooks", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest("POST", a.url+"/webhooks", strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
 	}
 
 	req.PostForm = form
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+a.Auth.AccessToken)
+	req.Header.Add("Authorization", "Bearer "+a.auth.AccessToken)
 
-	res, lastErr := a.Client.Do(req)
+	res, lastErr := a.client.Do(req)
 
 	if (res.Status != "200 OK" && res.Status != "201 Created") || lastErr != nil {
 		defer res.Body.Close()

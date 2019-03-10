@@ -34,8 +34,8 @@ type AuthResponse struct {
 }
 
 func (a *MonzoApi) AuthHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Auth Reuqest recieved: %+v", r)
-	uri := "https://auth.monzo.com/?client_id=" + a.ClientConfig.ClientId + "&redirect_uri=" + a.ClientConfig.RedirectUri + "&response_type=code&state=" + state
+	log.Printf("auth Reuqest recieved: %+v", r)
+	uri := "https://auth.monzo.com/?client_id=" + a.clientConfig.ClientId + "&redirect_uri=" + a.clientConfig.RedirectUri + "&response_type=code&state=" + state
 
 	http.Redirect(w, r, uri, 303)
 }
@@ -57,10 +57,10 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 
 	form := url.Values{}
 	form.Add("grant_type", "authorization_code")
-	form.Add("client_id", a.ClientConfig.ClientId)
-	form.Add("client_secret", a.ClientConfig.ClientSecret)
+	form.Add("client_id", a.clientConfig.ClientId)
+	form.Add("client_secret", a.clientConfig.ClientSecret)
 	form.Add("code", code)
-	form.Add("redirect_uri", a.ClientConfig.RedirectUri)
+	form.Add("redirect_uri", a.clientConfig.RedirectUri)
 
 	res, err := client.PostForm("https://api.monzo.com/oauth2/token", form)
 	if err != nil {
@@ -70,7 +70,7 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if res.Status != "200 OK" {
-		log.Printf("Auth response is not 200. Is %+v", res.Status)
+		log.Printf("auth response is not 200. Is %+v", res.Status)
 		return
 	}
 
@@ -89,7 +89,7 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Auth = result
+	a.auth = result
 	go a.runBasicInfo()
 	go extendAuth(a)
 
@@ -97,15 +97,15 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *MonzoApi) RefreshAuth() error {
-	log.Println("Refreshing Auth")
+	log.Println("Refreshing auth")
 
 	client := &http.Client{}
 
 	form := url.Values{}
 	form.Add("grant_type", "refresh_token")
-	form.Add("client_id", a.ClientConfig.ClientId)
-	form.Add("client_secret", a.ClientConfig.ClientSecret)
-	form.Add("refresh_token", a.Auth.RefreshToken)
+	form.Add("client_id", a.clientConfig.ClientId)
+	form.Add("client_secret", a.clientConfig.ClientSecret)
+	form.Add("refresh_token", a.auth.RefreshToken)
 
 	res, err := client.PostForm("https://api.monzo.com/oauth2/token", form)
 	if err != nil {
@@ -114,7 +114,7 @@ func (a *MonzoApi) RefreshAuth() error {
 	}
 
 	if res.Status != "200 OK" {
-		log.Printf("Auth response is not 200. Is %+v", res.Status)
+		log.Printf("auth response is not 200. Is %+v", res.Status)
 		return errors.New("response is not 200")
 	}
 
@@ -133,6 +133,6 @@ func (a *MonzoApi) RefreshAuth() error {
 		return err
 	}
 
-	a.Auth = result
+	a.auth = result
 	return nil
 }

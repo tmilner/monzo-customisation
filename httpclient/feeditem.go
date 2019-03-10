@@ -31,16 +31,16 @@ func (a *MonzoApi) CreateFeedItem(item *FeedItem) error {
 	form.Add("params[body]", item.Params.Body)
 	form.Add("params[image_url]", item.Params.ImageUrl)
 
-	req, err := http.NewRequest("POST", a.URL+"/feed", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest("POST", a.url+"/feed", strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
 	}
 
 	req.PostForm = form
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+a.Auth.AccessToken)
+	req.Header.Add("Authorization", "Bearer "+a.auth.AccessToken)
 
-	res, lastErr := a.Client.Do(req)
+	res, lastErr := a.client.Do(req)
 
 	if res.Status != "200 OK" && res.Status != "201 Created" {
 		defer res.Body.Close()

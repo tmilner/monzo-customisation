@@ -5,15 +5,17 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 )
 
 var monzoapi = "https://api.monzo.com/"
 
 type MonzoApi struct {
-	Auth         *AuthResponse
-	URL          string
-	Client       *http.Client
-	ClientConfig *ClientConfig
+	auth                  *AuthResponse
+	url                   string
+	client                *http.Client
+	clientConfig          *ClientConfig
+	processedTransactions sync.Map
 }
 
 type ClientConfig struct {
@@ -28,16 +30,17 @@ func CreateMonzoApi(config *ClientConfig) *MonzoApi {
 	client := &http.Client{}
 
 	return &MonzoApi{
-		ClientConfig: config,
-		Client:       client,
-		URL:          monzoapi,
+		clientConfig: config,
+		client:       client,
+		url:          monzoapi,
+		processedTransactions: sync.Map{},
 	}
 }
 
 func (a *MonzoApi) processGetRequest(path string) ([]byte, error) {
-	req, err := http.NewRequest("GET", a.URL+path, nil)
-	req.Header.Add("Authorization", "Bearer "+a.Auth.AccessToken)
-	resp, err := a.Client.Do(req)
+	req, err := http.NewRequest("GET", a.url+path, nil)
+	req.Header.Add("Authorization", "Bearer "+a.auth.AccessToken)
+	resp, err := a.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
