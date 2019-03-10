@@ -19,8 +19,8 @@ type PotResponse struct {
 	Deleted  bool      `json:"deleted"`
 }
 
-func (a *MonzoApi) GetPots() (*PotsResponse, error) {
-	body, err := a.processGetRequest("/pots")
+func (a *MonzoApi) GetPots(userId string) (*PotsResponse, error) {
+	body, err := a.processGetRequest("/pots", userId)
 	if err != nil {
 		return nil, err
 	}

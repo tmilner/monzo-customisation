@@ -23,8 +23,8 @@ type OwnersResponse struct {
 	PreferredFirstName string `json:"preferred_first_name"`
 }
 
-func (a *MonzoApi) ListAccounts() (*AccountListResponse, error) {
-	body, err := a.processGetRequest("/accounts")
+func (a *MonzoApi) ListAccounts(userId string) (*AccountListResponse, error) {
+	body, err := a.processGetRequest("/accounts", userId)
 
 	if err != nil {
 		return nil, err

@@ -11,12 +11,13 @@ import (
 var monzoapi = "https://api.monzo.com/"
 
 type MonzoApi struct {
-	auth                  *AuthResponse
-	url                   string
-	client                *http.Client
-	clientConfig          *ClientConfig
-	processedTransactions sync.Map
-	dailyTotal            sync.Map
+	url          string
+	client       *http.Client
+	clientConfig *ClientConfig
+	users        map[string]*User
+	usersLock    sync.RWMutex
+	accounts     map[string]*Account
+	accountsLock sync.RWMutex
 }
 
 type ClientConfig struct {
@@ -27,21 +28,61 @@ type ClientConfig struct {
 	RedirectUri  string
 }
 
+type User struct {
+	id       string
+	auth     *AuthResponse
+	accounts []*Account
+}
+
+type Account struct {
+	id                    string
+	processedTransactions sync.Map
+	dailyTotal            sync.Map
+	closed                bool
+	description           string
+	created               string
+	type_                 string
+	accountNumber         string
+	sortCode              string
+	owners                []OwnersResponse
+	user                  *User
+}
+
 func CreateMonzoApi(config *ClientConfig) *MonzoApi {
 	client := &http.Client{}
 
-	return &MonzoApi{
+	api := &MonzoApi{
 		clientConfig: config,
 		client:       client,
 		url:          monzoapi,
-		processedTransactions: sync.Map{},
-		dailyTotal:            sync.Map{},
+		users:        map[string]*User{},
+		usersLock:    sync.RWMutex{},
+		accounts:     map[string]*Account{},
+		accountsLock: sync.RWMutex{},
+	}
+	go extendAuth(api)
+
+	return api
+
+}
+
+func (a *MonzoApi) findUserForAccount(accountId string) (*User, error) {
+	if acc := a.accounts[accountId]; acc != nil {
+		return acc.user, nil
+	} else {
+		return nil, errors.New("cannot find Account")
 	}
 }
 
-func (a *MonzoApi) processGetRequest(path string) ([]byte, error) {
+func (a *MonzoApi) processGetRequest(path string, userId string) ([]byte, error) {
 	req, err := http.NewRequest("GET", a.url+path, nil)
-	req.Header.Add("Authorization", "Bearer "+a.auth.AccessToken)
+	user := a.users[userId]
+	if user == nil {
+		log.Printf("Could not find user for request to %s.", path)
+		return nil, errors.New("cound not find user")
+	}
+
+	req.Header.Add("Authorization", "Bearer "+user.auth.AccessToken)
 	resp, err := a.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -56,14 +97,14 @@ func (a *MonzoApi) processGetRequest(path string) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func (a *MonzoApi) runBasicInfo() {
-	listAccountRes, err := a.ListAccounts()
+func (a *MonzoApi) runBasicInfo(userId string) {
+	listAccountRes, err := a.ListAccounts(userId)
 	if err != nil {
 		log.Fatalln("ListAccount error", err)
 	}
 
 	log.Println("Retrieving pots:")
-	pots, err := a.GetPots()
+	pots, err := a.GetPots(userId)
 	if err != nil {
 		log.Fatalln("GetPots error", err)
 	}
@@ -78,7 +119,7 @@ func (a *MonzoApi) runBasicInfo() {
 
 	for _, account := range listAccountRes.Accounts {
 		if !account.Closed {
-			balance, err := a.GetBalance(account.Id)
+			balance, err := a.GetBalance(account.Id, userId)
 			if err != nil {
 				log.Printf("Error getting balance: %+v", err)
 			}

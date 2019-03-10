@@ -34,50 +34,62 @@ func (a *MonzoApi) WebhookHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (a *MonzoApi) handleWebhook(w *WebhookResponse) {
-	if _, found := a.processedTransactions.Load(w.Data.Id); !found {
+	a.accountsLock.Lock()
+	if account, found := a.accounts[w.Data.AccountId]; found {
+		if _, found := account.processedTransactions.Load(w.Data.Id); !found {
 
-		a.processedTransactions.Store(w.Data.Id, w.Data)
+			account.processedTransactions.Store(w.Data.Id, w.Data)
 
-		dailyTotal, found := a.dailyTotal.Load(w.Data.Created)
-		if found {
-			dailyTotal = w.Data.AccountBalance
-		} else {
-			dailyTotal.(int64) += w.Data.AccountBalance
-		}
-		a.dailyTotal.Store(w.Data.Created, dailyTotal)
-
-		var params *Params
-
-		if dailyTotal.(int64) < -5000 {
-			params = &Params{
-				Title:    "Spending a bit much aren't we?",
-				Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
-				ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
+			dailyTotal, found := account.dailyTotal.Load(w.Data.Created)
+			if found {
+				dailyTotal = w.Data.AccountBalance
+			} else {
+				dailyTotal = dailyTotal.(int64) + w.Data.AccountBalance
 			}
-		} else if w.Data.Amount < -10000 {
-			params = &Params{
-				Title:    "What the fuck is this Mr Big Spender!",
-				Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
-				ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
-			}
-		}
+			account.dailyTotal.Store(w.Data.Created, dailyTotal)
 
-		if params != nil {
-			feedItem := &FeedItem{
-				AccountId: w.Data.AccountId,
-				TypeParam: "basic",
-				Url:       "http://tmilner.co.uk",
-				Params:    *params,
+			var params *Params
+
+			if dailyTotal.(int64) < -5000 {
+				params = &Params{
+					Title:    "Spending a bit much aren't we?",
+					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
+					ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
+				}
+			} else if w.Data.Amount < -10000 {
+				params = &Params{
+					Title:    "What the fuck is this Mr Big Spender!",
+					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
+					ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
+				}
 			}
 
-			_ = a.CreateFeedItem(feedItem)
-		}
+			if params != nil {
+				feedItem := &FeedItem{
+					AccountId: w.Data.AccountId,
+					TypeParam: "basic",
+					Url:       "http://tmilner.co.uk",
+					Params:    *params,
+				}
 
+				_ = a.CreateFeedItem(feedItem)
+			}
+
+		}
+		a.accounts[w.Data.AccountId] = account
 	}
-
+	a.accountsLock.Unlock()
 }
 
 func (a *MonzoApi) RegisterWebhook(accountId string) error {
+	a.accountsLock.RLock()
+	account, found := a.accounts[accountId]
+	a.accountsLock.RUnlock()
+
+	if !found {
+		return errors.New("account not found")
+	}
+
 	form := url.Values{}
 	form.Add("account_id", accountId)
 	form.Add("url", a.clientConfig.WebhookURI)
@@ -89,7 +101,10 @@ func (a *MonzoApi) RegisterWebhook(accountId string) error {
 
 	req.PostForm = form
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+a.auth.AccessToken)
+
+	a.usersLock.RLock()
+	req.Header.Add("Authorization", "Bearer "+account.user.auth.AccessToken)
+	a.usersLock.RUnlock()
 
 	res, lastErr := a.client.Do(req)
 

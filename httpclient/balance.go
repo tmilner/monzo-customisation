@@ -20,8 +20,8 @@ type LocalSpendResponse struct {
 	Currency   string `json:"currency"`
 }
 
-func (a *MonzoApi) GetBalance(accountId string) (*BalanceResponse, error) {
-	body, err := a.processGetRequest("/balance?account_id=" + accountId)
+func (a *MonzoApi) GetBalance(accountId string, userId string) (*BalanceResponse, error) {
+	body, err := a.processGetRequest("/balance?account_id="+accountId, userId)
 
 	if err != nil {
 		return nil, err

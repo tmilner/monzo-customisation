@@ -10,8 +10,8 @@ type WhoAmIResponse struct {
 	UserId        string `json:"user_id"`
 }
 
-func (a *MonzoApi) WhoAmI() (*WhoAmIResponse, error) {
-	body, err := a.processGetRequest("/ping/whoami")
+func (a *MonzoApi) WhoAmI(userId string) (*WhoAmIResponse, error) {
+	body, err := a.processGetRequest("/ping/whoami", userId)
 	if err != nil {
 		return nil, err
 	}

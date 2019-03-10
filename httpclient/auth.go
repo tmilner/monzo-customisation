@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -89,50 +90,111 @@ func (a *MonzoApi) AuthReturnHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.auth = result
-	go a.runBasicInfo()
-	go extendAuth(a)
+	err = a.saveUserAndAccounts(result, false)
+	if err != nil {
+		return
+	}
+
+	go a.runBasicInfo(result.UserId)
 
 	_, _ = io.WriteString(w, "Suck it.")
+}
+
+func (a *MonzoApi) saveUserAndAccounts(response *AuthResponse, usersLocked bool) error {
+	accountRes, err := a.ListAccounts(response.UserId)
+	if err != nil {
+		log.Printf("Failed to get account info for authorised account %+v", err)
+		return errors.New("failed to get account info")
+	}
+	user := &User{
+		id:       response.UserId,
+		auth:     response,
+		accounts: make([]*Account, 0),
+	}
+
+	for _, acc := range accountRes.Accounts {
+		account := &Account{
+			id: acc.Id,
+			processedTransactions: sync.Map{},
+			dailyTotal:            sync.Map{},
+			closed:                acc.Closed,
+			description:           acc.Description,
+			created:               acc.Created,
+			type_:                 acc.Type,
+			accountNumber:         acc.AccountNumber,
+			sortCode:              acc.SortCode,
+			owners:                acc.Owners,
+			user:                  user,
+		}
+
+		a.accountsLock.Lock()
+		a.accounts[acc.Id] = account
+		a.accountsLock.Unlock()
+
+		user = &User{
+			id:       user.id,
+			auth:     user.auth,
+			accounts: append(user.accounts, account),
+		}
+	}
+
+	if !usersLocked {
+		a.usersLock.Lock()
+	}
+	a.users[response.UserId] = user
+	if !usersLocked {
+		a.usersLock.Unlock()
+	}
+
+	return nil
 }
 
 func (a *MonzoApi) RefreshAuth() error {
 	log.Println("Refreshing auth")
 
-	client := &http.Client{}
+	a.usersLock.Lock()
+	for _, user := range a.users {
 
-	form := url.Values{}
-	form.Add("grant_type", "refresh_token")
-	form.Add("client_id", a.clientConfig.ClientId)
-	form.Add("client_secret", a.clientConfig.ClientSecret)
-	form.Add("refresh_token", a.auth.RefreshToken)
+		client := &http.Client{}
 
-	res, err := client.PostForm("https://api.monzo.com/oauth2/token", form)
-	if err != nil {
-		log.Printf("Error posting for token %+v", err)
-		return err
+		form := url.Values{}
+		form.Add("grant_type", "refresh_token")
+		form.Add("client_id", a.clientConfig.ClientId)
+		form.Add("client_secret", a.clientConfig.ClientSecret)
+		form.Add("refresh_token", user.auth.RefreshToken)
+
+		res, err := client.PostForm("https://api.monzo.com/oauth2/token", form)
+		if err != nil {
+			log.Printf("Error posting for token %+v", err)
+			return err
+		}
+
+		if res.Status != "200 OK" {
+			log.Printf("auth response is not 200. Is %+v", res.Status)
+			return errors.New("response is not 200")
+		}
+
+		defer res.Body.Close()
+		body, err := ioutil.ReadAll(res.Body)
+
+		if err != nil {
+			log.Println("Error in auth")
+			return err
+		}
+
+		var result *AuthResponse
+		err = json.Unmarshal(body, &result)
+		if err != nil {
+			log.Printf("Unable to unmarshal auth response: %+v", string(body))
+			return err
+		}
+
+		err = a.saveUserAndAccounts(result, true)
+		if err != nil {
+			return err
+		}
 	}
+	a.usersLock.Unlock()
 
-	if res.Status != "200 OK" {
-		log.Printf("auth response is not 200. Is %+v", res.Status)
-		return errors.New("response is not 200")
-	}
-
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-
-	if err != nil {
-		log.Println("Error in auth")
-		return err
-	}
-
-	var result *AuthResponse
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		log.Printf("Unable to unmarshal auth response: %+v", string(body))
-		return err
-	}
-
-	a.auth = result
 	return nil
 }

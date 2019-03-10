@@ -53,8 +53,8 @@ type AddressResponse struct {
 	ShortFormatted string  `json:"short_formatted,omitempty"`
 }
 
-func (a *MonzoApi) GetTransactions(accountId string) (*TransactionsResponse, error) {
-	body, err := a.processGetRequest("/transactions?expand[]=merchant&account_id=" + accountId)
+func (a *MonzoApi) GetTransactions(accountId string, userId string) (*TransactionsResponse, error) {
+	body, err := a.processGetRequest("/transactions?expand[]=merchant&account_id="+accountId, userId)
 	if err != nil {
 		return nil, err
 	}

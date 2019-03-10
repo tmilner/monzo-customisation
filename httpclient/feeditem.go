@@ -38,7 +38,17 @@ func (a *MonzoApi) CreateFeedItem(item *FeedItem) error {
 
 	req.PostForm = form
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+a.auth.AccessToken)
+
+	a.accountsLock.RLock()
+	account, found := a.accounts[item.AccountId]
+	a.accountsLock.RUnlock()
+	if !found {
+		return errors.New("account not found")
+	}
+
+	a.usersLock.RLock()
+	req.Header.Add("Authorization", "Bearer "+account.user.auth.AccessToken)
+	a.usersLock.RUnlock()
 
 	res, lastErr := a.client.Do(req)
 
