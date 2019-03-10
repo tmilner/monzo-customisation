@@ -16,6 +16,7 @@ type MonzoApi struct {
 	client                *http.Client
 	clientConfig          *ClientConfig
 	processedTransactions sync.Map
+	dailyTotal            sync.Map
 }
 
 type ClientConfig struct {
@@ -34,6 +35,7 @@ func CreateMonzoApi(config *ClientConfig) *MonzoApi {
 		client:       client,
 		url:          monzoapi,
 		processedTransactions: sync.Map{},
+		dailyTotal:            sync.Map{},
 	}
 }
 

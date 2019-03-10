@@ -3,6 +3,7 @@ package httpclient
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -34,13 +35,29 @@ func (a *MonzoApi) WebhookHandler(w http.ResponseWriter, req *http.Request) {
 
 func (a *MonzoApi) handleWebhook(w *WebhookResponse) {
 	if _, found := a.processedTransactions.Load(w.Data.Id); !found {
+
 		a.processedTransactions.Store(w.Data.Id, w.Data)
+
+		dailyTotal, found := a.dailyTotal.Load(w.Data.Created)
+		if found {
+			dailyTotal = w.Data.AccountBalance
+		} else {
+			dailyTotal.(int64) += w.Data.AccountBalance
+		}
+		a.dailyTotal.Store(w.Data.Created, dailyTotal)
+
 		var params *Params
 
-		if w.Data.Amount < -5000 {
+		if dailyTotal.(int64) < -5000 {
 			params = &Params{
 				Title:    "Spending a bit much aren't we?",
-				Body:     "Tut tut 💸💸💸💸💸",
+				Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
+				ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
+			}
+		} else if w.Data.Amount < -10000 {
+			params = &Params{
+				Title:    "What the fuck is this Mr Big Spender!",
+				Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
 				ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 			}
 		}
