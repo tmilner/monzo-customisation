@@ -179,12 +179,10 @@ func timeToDate(timestamp time.Time) time.Time {
 }
 
 func (a *MonzoCustomisation) runBasicInfo(userId string) {
+	a.usersLock.RLock()
+	user := a.users[userId]
 	authToken := a.users[userId].auth.AccessToken
-
-	listAccountRes, err := a.client.ListAccounts(authToken)
-	if err != nil {
-		log.Fatalln("ListAccount error", err)
-	}
+	a.usersLock.RUnlock()
 
 	log.Println("Retrieving pots:")
 	pots, err := a.client.GetPots(authToken)
@@ -200,13 +198,13 @@ func (a *MonzoCustomisation) runBasicInfo(userId string) {
 
 	log.Println("Running through accounts:")
 
-	for _, account := range listAccountRes.Accounts {
-		if !account.Closed {
-			balance, err := a.client.GetBalance(account.Id, authToken)
+	for _, account := range user.accounts {
+		if !account.closed {
+			balance, err := a.client.GetBalance(account.id, authToken)
 			if err != nil {
 				log.Printf("Error getting balance: %+v", err)
 			}
-			log.Printf("Balance for account %s is %d", account.Type, balance.Balance)
+			log.Printf("Balance for account %s is %d", account.type_, balance.Balance)
 
 			params := &monzoclient.Params{
 				Title:    "tmilner.co.uk Authenticated!",
@@ -215,12 +213,12 @@ func (a *MonzoCustomisation) runBasicInfo(userId string) {
 			}
 
 			log.Printf("Creating a feed item: %+v", params)
-			feedErr := a.createFeedItem(account.Id, params)
+			feedErr := a.createFeedItem(account.id, params)
 			if feedErr != nil {
 				log.Printf("Feed error: %+v", feedErr)
 			}
 
-			err = a.registerWebhook(account.Id)
+			err = a.registerWebhook(account.id)
 			if err != nil {
 				log.Printf("Error creting webhook: %+v", err)
 			}
@@ -407,7 +405,7 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.Transact
 			if !found {
 				dailyTotal = transaction.Amount
 			} else {
-				dailyTotal = dailyTotal.(int64) + transaction.Amount
+				dailyTotal = dailyTotal.(int64) - transaction.Amount
 			}
 			account.dailyTotal.Store(timeToDate(transaction.Created), dailyTotal)
 
