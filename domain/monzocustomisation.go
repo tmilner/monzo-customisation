@@ -165,9 +165,9 @@ func (a *MonzoCustomisation) processTodaysTransactions(userId string) {
 
 		dailyTotal, found := acc.dailyTotal.Load(today)
 		if found {
-			log.Printf("Processed todays transactions for account %s. Total is: %d", acc.type_, dailyTotal)
+			log.Printf("Processed todays transactions [%d] for account %s. Total is: %d", len(res.Transactions), acc.type_, dailyTotal)
 		} else {
-			log.Printf("Processed todays transactions for account %s. Found none.", acc.type_)
+			log.Printf("Processed todays transactions [%d] for account %s. Found none.", len(res.Transactions), acc.type_)
 		}
 	}
 	a.usersLock.RUnlock()
