@@ -163,8 +163,7 @@ func (a *MonzoCustomisation) processTodaysTransactions(userId string) {
 			a.handleTransaction(&transact)
 		}
 
-		dailyTotal, found := acc.dailyTotal.Load(today)
-		if found {
+		if dailyTotal, found := acc.dailyTotal.Load(today); found {
 			log.Printf("Processed todays transactions [%d] for account %s. Total is: %d", len(res.Transactions), acc.type_, dailyTotal)
 		} else {
 			log.Printf("Processed todays transactions [%d] for account %s. Found none.", len(res.Transactions), acc.type_)
@@ -341,7 +340,6 @@ func (a *MonzoCustomisation) registerWebhook(accountId string) error {
 }
 
 func (a *MonzoCustomisation) authHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("auth Reuqest recieved: %+v", r)
 	uri := "https://auth.monzo.com/?client_id=" + a.config.ClientId + "&redirect_uri=" + a.config.RedirectUri + "&response_type=code&state=" + a.stateToken
 
 	http.Redirect(w, r, uri, 303)
@@ -351,8 +349,6 @@ func (a *MonzoCustomisation) authReturnHandler(w http.ResponseWriter, r *http.Re
 	log.Println("Auth_Return received!")
 	code := r.URL.Query().Get("code")
 	stateReturned := r.URL.Query().Get("state")
-
-	log.Printf("Got code: %s", code)
 
 	if stateReturned != a.stateToken {
 		log.Println("State token is not correct!")
@@ -400,14 +396,16 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.Transact
 		if _, found := account.processedTransactions.Load(transaction.Id); !found {
 
 			account.processedTransactions.Store(transaction.Id, transaction)
+			transCreated := timeToDate(transaction.Created)
 
-			dailyTotal, found := account.dailyTotal.Load(timeToDate(transaction.Created))
+			log.Printf("Processing Transaction for date %s", transCreated.Format(time.RFC3339))
+			dailyTotal, found := account.dailyTotal.Load(transCreated)
 			if !found {
 				dailyTotal = transaction.Amount
 			} else {
 				dailyTotal = dailyTotal.(int64) - transaction.Amount
 			}
-			account.dailyTotal.Store(timeToDate(transaction.Created), dailyTotal)
+			account.dailyTotal.Store(transCreated, dailyTotal)
 
 			var params *monzoclient.Params
 
