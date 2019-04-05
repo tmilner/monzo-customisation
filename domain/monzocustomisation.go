@@ -397,7 +397,6 @@ func (a *MonzoCustomisation) webhookHandler(w http.ResponseWriter, req *http.Req
 }
 
 func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.TransactionDetailsResponse) {
-	log.Printf("Handeling transaction [%+v]", transaction)
 	a.accountsLock.Lock()
 	if account, found := a.accounts[transaction.AccountId]; found {
 		if _, found := account.processedTransactions.Load(transaction.Id); !found {
@@ -406,10 +405,8 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.Transact
 
 			dailyTotal, found := account.dailyTotal.Load(timeToDate(transaction.Created))
 			if !found {
-				log.Println("Didnt find a daily total to using transaction amount.")
 				dailyTotal = transaction.Amount
 			} else {
-				log.Println("Found daily amount increasing it.")
 				dailyTotal = dailyTotal.(int64) + transaction.Amount
 			}
 			account.dailyTotal.Store(timeToDate(transaction.Created), dailyTotal)
@@ -418,7 +415,7 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.Transact
 
 			if dailyTotal.(int64) < -5000 {
 				params = &monzoclient.Params{
-					Title:    "Spending a bit much aren'transaction we?",
+					Title:    "Spending a bit much aren't we?",
 					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
 					ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 				}
