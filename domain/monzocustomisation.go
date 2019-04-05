@@ -396,7 +396,7 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.Transact
 			account.processedTransactions.Store(transaction.Id, transaction)
 
 			dailyTotal, found := account.dailyTotal.Load(timeToDate(transaction.Created))
-			if found {
+			if !found {
 				dailyTotal = transaction.AccountBalance
 			} else {
 				dailyTotal = dailyTotal.(int64) + transaction.AccountBalance
