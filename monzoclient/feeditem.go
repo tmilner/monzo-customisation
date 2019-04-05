@@ -1,4 +1,4 @@
-package httpclient
+package monzoclient
 
 import (
 	"errors"
@@ -10,10 +10,10 @@ import (
 )
 
 type FeedItem struct {
-	AccountId string `json:"account_id"`
-	TypeParam string `json:"type"`
-	Url       string `json:"url"`
-	Params    Params `json:"params"`
+	AccountId string  `json:"account_id"`
+	TypeParam string  `json:"type"`
+	Url       string  `json:"url"`
+	Params    *Params `json:"params"`
 }
 
 type Params struct {
@@ -22,7 +22,7 @@ type Params struct {
 	ImageUrl string `json:"image_url"`
 }
 
-func (a *MonzoApi) CreateFeedItem(item *FeedItem) error {
+func (a *MonzoClient) CreateFeedItem(item *FeedItem, authToken string) error {
 	form := url.Values{}
 	form.Add("account_id", item.AccountId)
 	form.Add("type", "basic")
@@ -38,21 +38,15 @@ func (a *MonzoApi) CreateFeedItem(item *FeedItem) error {
 
 	req.PostForm = form
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	a.accountsLock.RLock()
-	account, found := a.accounts[item.AccountId]
-	a.accountsLock.RUnlock()
-	if !found {
-		return errors.New("account not found")
-	}
-
-	a.usersLock.RLock()
-	req.Header.Add("Authorization", "Bearer "+account.user.auth.AccessToken)
-	a.usersLock.RUnlock()
+	req.Header.Add("Authorization", "Bearer "+authToken)
 
 	res, lastErr := a.client.Do(req)
 
-	if res.Status != "200 OK" && res.Status != "201 Created" {
+	if lastErr != nil {
+		return lastErr
+	}
+
+	if "200 OK" != res.Status && "201 Created" != res.Status {
 		defer res.Body.Close()
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
@@ -64,5 +58,5 @@ func (a *MonzoApi) CreateFeedItem(item *FeedItem) error {
 		return errors.New("not 200 or 201")
 	}
 
-	return lastErr
+	return nil
 }

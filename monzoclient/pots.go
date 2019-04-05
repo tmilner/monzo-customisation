@@ -1,4 +1,4 @@
-package httpclient
+package monzoclient
 
 import (
 	"encoding/json"
@@ -19,8 +19,8 @@ type PotResponse struct {
 	Deleted  bool      `json:"deleted"`
 }
 
-func (a *MonzoApi) GetPots(userId string) (*PotsResponse, error) {
-	body, err := a.processGetRequest("/pots", userId)
+func (a *MonzoClient) GetPots(authToken string) (*PotsResponse, error) {
+	body, err := a.processGetRequest("/pots", authToken)
 	if err != nil {
 		return nil, err
 	}

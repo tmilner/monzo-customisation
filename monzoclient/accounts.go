@@ -1,4 +1,4 @@
-package httpclient
+package monzoclient
 
 import (
 	"encoding/json"
@@ -23,8 +23,8 @@ type OwnersResponse struct {
 	PreferredFirstName string `json:"preferred_first_name"`
 }
 
-func (a *MonzoApi) ListAccounts(userId string) (*AccountListResponse, error) {
-	body, err := a.processGetRequest("/accounts", userId)
+func (a *MonzoClient) ListAccounts(authToken string) (*AccountListResponse, error) {
+	body, err := a.processGetRequest("/accounts", authToken)
 
 	if err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-package httpclient
+package monzoclient
 
 import (
 	"encoding/json"
@@ -10,8 +10,8 @@ type WhoAmIResponse struct {
 	UserId        string `json:"user_id"`
 }
 
-func (a *MonzoApi) WhoAmI(userId string) (*WhoAmIResponse, error) {
-	body, err := a.processGetRequest("/ping/whoami", userId)
+func (a *MonzoClient) WhoAmI(authToken string) (*WhoAmIResponse, error) {
+	body, err := a.processGetRequest("/ping/whoami", authToken)
 	if err != nil {
 		return nil, err
 	}

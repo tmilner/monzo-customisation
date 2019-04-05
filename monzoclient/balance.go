@@ -1,4 +1,4 @@
-package httpclient
+package monzoclient
 
 import (
 	"encoding/json"
@@ -20,8 +20,8 @@ type LocalSpendResponse struct {
 	Currency   string `json:"currency"`
 }
 
-func (a *MonzoApi) GetBalance(accountId string, userId string) (*BalanceResponse, error) {
-	body, err := a.processGetRequest("/balance?account_id="+accountId, userId)
+func (a *MonzoClient) GetBalance(accountId string, authToken string) (*BalanceResponse, error) {
+	body, err := a.processGetRequest("/balance?account_id="+accountId, authToken)
 
 	if err != nil {
 		return nil, err
