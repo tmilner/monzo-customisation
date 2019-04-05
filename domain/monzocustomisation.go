@@ -162,6 +162,7 @@ func (a *MonzoCustomisation) processTodaysTransactions(userId string) {
 		for _, transact := range res.Transactions {
 			a.handleTransaction(&transact)
 		}
+
 		dailyTotal, found := acc.dailyTotal.Load(today)
 		if found {
 			log.Printf("Processed todays transactions for account %s. Total is: %d", acc.type_, dailyTotal)

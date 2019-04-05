@@ -2,6 +2,7 @@ package monzoclient
 
 import (
 	"encoding/json"
+	"log"
 	"time"
 )
 
@@ -65,6 +66,7 @@ func (a *MonzoClient) GetTransactions(accountId string, authToken string) (*Tran
 }
 
 func (a *MonzoClient) GetTransactionsSinceTimestamp(accountId string, authToken string, timestamp time.Time) (*TransactionsResponse, error) {
+	log.Printf("Getting transactions since %s", timestamp.Format(time.RFC3339))
 	body, err := a.processGetRequest("/transactions?expand[]=merchant&account_id="+accountId+"&since="+timestamp.Format(time.RFC3339), authToken)
 	if err != nil {
 		return nil, err
