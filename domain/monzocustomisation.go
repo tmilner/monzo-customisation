@@ -397,6 +397,7 @@ func (a *MonzoCustomisation) webhookHandler(w http.ResponseWriter, req *http.Req
 }
 
 func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.TransactionDetailsResponse) {
+	log.Printf("Handeling transaction [%+v]", transaction)
 	a.accountsLock.Lock()
 	if account, found := a.accounts[transaction.AccountId]; found {
 		if _, found := account.processedTransactions.Load(transaction.Id); !found {
@@ -405,9 +406,11 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.Transact
 
 			dailyTotal, found := account.dailyTotal.Load(timeToDate(transaction.Created))
 			if !found {
-				dailyTotal = transaction.AccountBalance
+				log.Println("Didnt find a daily total to using transaction amount.")
+				dailyTotal = transaction.Amount
 			} else {
-				dailyTotal = dailyTotal.(int64) + transaction.AccountBalance
+				log.Println("Found daily amount increasing it.")
+				dailyTotal = dailyTotal.(int64) + transaction.Amount
 			}
 			account.dailyTotal.Store(timeToDate(transaction.Created), dailyTotal)
 
