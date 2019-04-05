@@ -151,15 +151,22 @@ func (a *MonzoCustomisation) processTodaysTransactions(userId string) {
 	a.usersLock.RLock()
 
 	var user = a.users[userId]
+	var today = timeToDate(time.Now())
 
 	for _, acc := range user.accounts {
-		res, err := a.client.GetTransactionsSinceTimestamp(acc.id, user.auth.AccessToken, timeToDate(time.Now()))
+		res, err := a.client.GetTransactionsSinceTimestamp(acc.id, user.auth.AccessToken, today)
 		if err != nil {
 			return
 		}
 
 		for _, transact := range res.Transactions {
 			a.handleTransaction(&transact)
+		}
+		dailyTotal, found := acc.dailyTotal.Load(today)
+		if found {
+			log.Printf("Processed todays transactions for account %s. Total is: %d", acc.type_, dailyTotal)
+		} else {
+			log.Printf("Processed todays transactions for account %s. Found none.", acc.type_)
 		}
 	}
 	a.usersLock.RUnlock()
