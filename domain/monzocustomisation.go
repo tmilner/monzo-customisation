@@ -69,6 +69,11 @@ type Owner struct {
 	PreferredFirstName string
 }
 
+type WebhookResponse struct {
+	TransactionType string                                 `json:"type"`
+	Data            monzoclient.TransactionDetailsResponse `json:"data"`
+}
+
 func CreateMonzoCustomisation(client *monzoclient.MonzoClient, config *Config) *MonzoCustomisation {
 	monzo := &MonzoCustomisation{
 		client:       client,
@@ -142,6 +147,29 @@ func (a *MonzoCustomisation) findUserForAccount(accountId string) (*User, error)
 	}
 }
 
+func (a *MonzoCustomisation) processTodaysTransactions(userId string) {
+	a.usersLock.RLock()
+
+	var user = a.users[userId]
+
+	for _, acc := range user.accounts {
+		res, err := a.client.GetTransactionsSinceTimestamp(acc.id, user.auth.AccessToken, timeToDate(time.Now()))
+		if err != nil {
+			return
+		}
+
+		for _, transact := range res.Transactions {
+			a.handleTransaction(&transact)
+		}
+	}
+	a.usersLock.RUnlock()
+
+}
+
+func timeToDate(timestamp time.Time) time.Time {
+	return time.Date(timestamp.Year(), timestamp.Month(), timestamp.Day(), 0, 0, 0, 0, timestamp.Location())
+}
+
 func (a *MonzoCustomisation) runBasicInfo(userId string) {
 	authToken := a.users[userId].auth.AccessToken
 
@@ -210,33 +238,35 @@ func (a *MonzoCustomisation) saveUserAndAccounts(response *Auth, usersLocked boo
 	}
 
 	for _, acc := range accountRes.Accounts {
-		owners := make([]Owner, len(acc.Owners))
-		for index, owner := range acc.Owners {
-			owners[index] = Owner(owner)
-		}
+		if !acc.Closed {
+			owners := make([]Owner, len(acc.Owners))
+			for index, owner := range acc.Owners {
+				owners[index] = Owner(owner)
+			}
 
-		account := &Account{
-			id: acc.Id,
-			processedTransactions: sync.Map{},
-			dailyTotal:            sync.Map{},
-			closed:                acc.Closed,
-			description:           acc.Description,
-			created:               acc.Created,
-			type_:                 acc.Type,
-			accountNumber:         acc.AccountNumber,
-			sortCode:              acc.SortCode,
-			owners:                owners,
-			user:                  user,
-		}
+			account := &Account{
+				id: acc.Id,
+				processedTransactions: sync.Map{},
+				dailyTotal:            sync.Map{},
+				closed:                acc.Closed,
+				description:           acc.Description,
+				created:               acc.Created,
+				type_:                 acc.Type,
+				accountNumber:         acc.AccountNumber,
+				sortCode:              acc.SortCode,
+				owners:                owners,
+				user:                  user,
+			}
 
-		a.accountsLock.Lock()
-		a.accounts[acc.Id] = account
-		a.accountsLock.Unlock()
+			a.accountsLock.Lock()
+			a.accounts[acc.Id] = account
+			a.accountsLock.Unlock()
 
-		user = &User{
-			id:       user.id,
-			auth:     user.auth,
-			accounts: append(user.accounts, account),
+			user = &User{
+				id:       user.id,
+				auth:     user.auth,
+				accounts: append(user.accounts, account),
+			}
 		}
 	}
 
@@ -337,53 +367,10 @@ func (a *MonzoCustomisation) authReturnHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	go a.processTodaysTransactions(res.UserId)
 	go a.runBasicInfo(res.UserId)
 
 	_, _ = io.WriteString(w, "Suck it.")
-}
-
-type WebhookResponse struct {
-	TransactionType string                     `json:"type"`
-	Data            TransactionDetailsResponse `json:"data"`
-}
-
-type TransactionDetailsResponse struct {
-	AccountId      string           `json:"account_id,omitempty"`
-	AccountBalance int64            `json:"account_balance,omitempty"`
-	Amount         int64            `json:"amount"`
-	Created        time.Time        `json:"created"`
-	Currency       string           `json:"currency"`
-	Description    string           `json:"description"`
-	Id             string           `json:"id"`
-	Merchant       MerchantResponse `json:"merchant,omitempty"`
-	Notes          string           `json:"notes,omitempty"`
-	IsLoad         bool             `json:"is_load"`
-	Settled        string           `json:"settled"`
-	DeclineReason  string           `json:"decline_reason,omitempty"`
-	Category       string           `json:"category"`
-}
-
-type MerchantResponse struct {
-	Created  time.Time       `json:"created"`
-	Id       string          `json:"id"`
-	Logo     string          `json:"logo"`
-	Emoji    string          `json:"emoji"`
-	Name     string          `json:"name"`
-	Category string          `json:"category"`
-	Address  AddressResponse `json:"address"`
-	Atm      bool            `json:"atm,omitempty"`
-}
-
-type AddressResponse struct {
-	Address        string  `json:"address"`
-	City           string  `json:"city"`
-	Country        string  `json:"country"`
-	Latitude       float64 `json:"latitude"`
-	Longitude      float64 `json:"longitude"`
-	Postcode       string  `json:"postcode"`
-	Region         string  `json:"region"`
-	Formatted      string  `json:"formatted,omitempty"`
-	ShortFormatted string  `json:"short_formatted,omitempty"`
 }
 
 func (a *MonzoCustomisation) webhookHandler(w http.ResponseWriter, req *http.Request) {
@@ -397,35 +384,34 @@ func (a *MonzoCustomisation) webhookHandler(w http.ResponseWriter, req *http.Req
 		return
 	}
 	log.Printf("Recieved new transaction! %+v", result)
-	go a.handleWebhook(&result)
 	w.WriteHeader(http.StatusOK)
-	_, _ = io.WriteString(w, "Suck it.")
+	a.handleTransaction(&result.Data)
 }
 
-func (a *MonzoCustomisation) handleWebhook(w *WebhookResponse) {
+func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.TransactionDetailsResponse) {
 	a.accountsLock.Lock()
-	if account, found := a.accounts[w.Data.AccountId]; found {
-		if _, found := account.processedTransactions.Load(w.Data.Id); !found {
+	if account, found := a.accounts[transaction.AccountId]; found {
+		if _, found := account.processedTransactions.Load(transaction.Id); !found {
 
-			account.processedTransactions.Store(w.Data.Id, w.Data)
+			account.processedTransactions.Store(transaction.Id, transaction)
 
-			dailyTotal, found := account.dailyTotal.Load(w.Data.Created)
+			dailyTotal, found := account.dailyTotal.Load(timeToDate(transaction.Created))
 			if found {
-				dailyTotal = w.Data.AccountBalance
+				dailyTotal = transaction.AccountBalance
 			} else {
-				dailyTotal = dailyTotal.(int64) + w.Data.AccountBalance
+				dailyTotal = dailyTotal.(int64) + transaction.AccountBalance
 			}
-			account.dailyTotal.Store(w.Data.Created, dailyTotal)
+			account.dailyTotal.Store(timeToDate(transaction.Created), dailyTotal)
 
 			var params *monzoclient.Params
 
 			if dailyTotal.(int64) < -5000 {
 				params = &monzoclient.Params{
-					Title:    "Spending a bit much aren't we?",
+					Title:    "Spending a bit much aren'transaction we?",
 					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
 					ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 				}
-			} else if w.Data.Amount < -10000 {
+			} else if transaction.Amount < -10000 {
 				params = &monzoclient.Params{
 					Title:    "What the fuck is this Mr Big Spender!",
 					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
@@ -434,11 +420,11 @@ func (a *MonzoCustomisation) handleWebhook(w *WebhookResponse) {
 			}
 
 			if params != nil {
-				_ = a.createFeedItem(w.Data.AccountId, params)
+				_ = a.createFeedItem(transaction.AccountId, params)
 			}
 
 		}
-		a.accounts[w.Data.AccountId] = account
+		a.accounts[transaction.AccountId] = account
 	}
 	a.accountsLock.Unlock()
 }
