@@ -65,9 +65,9 @@ func (a *MonzoClient) GetTransactions(accountId string, authToken string) (*Tran
 	return &result, err
 }
 
-func (a *MonzoClient) GetTransactionsSinceTimestamp(accountId string, authToken string, timestamp time.Time) (*TransactionsResponse, error) {
-	log.Printf("Getting transactions for %s since %s", accountId, timestamp.Format(time.RFC3339))
-	body, err := a.processGetRequest("/transactions?expand[]=merchant&account_id="+accountId+"&since="+timestamp.Format(time.RFC3339), authToken)
+func (a *MonzoClient) GetTransactionsSinceTimestamp(accountId string, authToken string, timestamp string) (*TransactionsResponse, error) {
+	log.Printf("Getting transactions for %s since %s", accountId, timestamp)
+	body, err := a.processGetRequest("/transactions?expand[]=merchant&account_id="+accountId+"&since="+timestamp, authToken)
 	if err != nil {
 		return nil, err
 	}

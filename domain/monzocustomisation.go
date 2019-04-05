@@ -173,8 +173,8 @@ func (a *MonzoCustomisation) processTodaysTransactions(userId string) {
 
 }
 
-func timeToDate(timestamp time.Time) time.Time {
-	return time.Date(timestamp.Year(), timestamp.Month(), timestamp.Day(), 0, 0, 0, 0, timestamp.Location())
+func timeToDate(timestamp time.Time) string {
+	return time.Date(timestamp.Year(), timestamp.Month(), timestamp.Day(), 0, 0, 0, 0, timestamp.Location()).Format(time.RFC3339)
 }
 
 func (a *MonzoCustomisation) runBasicInfo(userId string) {
@@ -396,7 +396,7 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.Transact
 		if _, found := account.processedTransactions.Load(transaction.Id); !found {
 
 			account.processedTransactions.Store(transaction.Id, transaction)
-			transCreated := timeToDate(transaction.Created).Format(time.RFC3339)
+			transCreated := timeToDate(transaction.Created)
 
 			log.Printf("Processing Transaction for date %s", transCreated)
 			dailyTotal, found := account.dailyTotal.Load(transCreated)
