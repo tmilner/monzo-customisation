@@ -1,4 +1,4 @@
-package domain
+package application
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
-	"github.com/tmilner/monzo-customisation/monzoclient"
+	"github.com/tmilner/monzo-customisation/adapters/monzorestclient"
 	"github.com/twinj/uuid"
 	"io"
 	"log"
@@ -15,8 +15,21 @@ import (
 	"time"
 )
 
+type MonzoClient interface {
+	GetTransactions(accountId string, authToken string) (*monzorestclient.TransactionsResponse, error)
+	GetTransactionsSinceTimestamp(accountId string, authToken string, timestamp string) (*monzorestclient.TransactionsResponse, error)
+	GetPots(authToken string) (*monzorestclient.PotsResponse, error)
+	GetBalance(accountId string, authToken string) (*monzorestclient.BalanceResponse, error)
+	ListAccounts(authToken string) (*monzorestclient.AccountListResponse, error)
+	CreateFeedItem(item *monzorestclient.FeedItem, authToken string) error
+	RegisterWebhook(accountId string, accessToken string, uri string) error
+	Authenticate(code string, clientId string, clientSecret string, redirectUri string) (*monzorestclient.AuthResponse, error)
+	RefreshAuth(auth string, clientId string, clientSecret string) (*monzorestclient.AuthResponse, error)
+	WhoAmI(authToken string) (*monzorestclient.WhoAmIResponse, error)
+}
+
 type MonzoCustomisation struct {
-	client       *monzoclient.MonzoClient
+	client       MonzoClient
 	config       *Config
 	users        map[string]*User
 	usersLock    sync.RWMutex
@@ -70,11 +83,11 @@ type Owner struct {
 }
 
 type WebhookResponse struct {
-	TransactionType string                                 `json:"type"`
-	Data            monzoclient.TransactionDetailsResponse `json:"data"`
+	TransactionType string                                     `json:"type"`
+	Data            monzorestclient.TransactionDetailsResponse `json:"data"`
 }
 
-func CreateMonzoCustomisation(client *monzoclient.MonzoClient, config *Config) *MonzoCustomisation {
+func CreateMonzoCustomisation(client *monzorestclient.MonzoRestClient, config *Config) *MonzoCustomisation {
 	monzo := &MonzoCustomisation{
 		client:       client,
 		config:       config,
@@ -205,7 +218,7 @@ func (a *MonzoCustomisation) runBasicInfo(userId string) {
 			}
 			log.Printf("Balance for account %s is %d", account.type_, balance.Balance)
 
-			params := &monzoclient.Params{
+			params := &monzorestclient.Params{
 				Title:    "tmilner.co.uk Authenticated!",
 				Body:     "Woop Woop",
 				ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
@@ -301,7 +314,7 @@ func (a *MonzoCustomisation) refreshAuth() error {
 	return nil
 }
 
-func (a *MonzoCustomisation) createFeedItem(accountId string, params *monzoclient.Params) error {
+func (a *MonzoCustomisation) createFeedItem(accountId string, params *monzorestclient.Params) error {
 	a.accountsLock.RLock()
 	account, found := a.accounts[accountId]
 	a.accountsLock.RUnlock()
@@ -313,7 +326,7 @@ func (a *MonzoCustomisation) createFeedItem(accountId string, params *monzoclien
 	authToken := account.user.auth.AccessToken
 	a.usersLock.RUnlock()
 
-	feedItem := &monzoclient.FeedItem{
+	feedItem := &monzorestclient.FeedItem{
 		AccountId: accountId,
 		TypeParam: "basic",
 		Url:       "http://tmilner.co.uk",
@@ -390,7 +403,7 @@ func (a *MonzoCustomisation) webhookHandler(w http.ResponseWriter, req *http.Req
 	a.handleTransaction(&result.Data)
 }
 
-func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.TransactionDetailsResponse) {
+func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.TransactionDetailsResponse) {
 	a.accountsLock.Lock()
 	if account, found := a.accounts[transaction.AccountId]; found {
 		if _, found := account.processedTransactions.Load(transaction.Id); !found {
@@ -406,16 +419,16 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzoclient.Transact
 			}
 			account.dailyTotal.Store(transCreated, dailyTotal)
 
-			var params *monzoclient.Params
+			var params *monzorestclient.Params
 
 			if dailyTotal.(int64) < -5000 {
-				params = &monzoclient.Params{
+				params = &monzorestclient.Params{
 					Title:    "Spending a bit much aren't we?",
 					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
 					ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 				}
 			} else if transaction.Amount < -10000 {
-				params = &monzoclient.Params{
+				params = &monzorestclient.Params{
 					Title:    "What the fuck is this Mr Big Spender!",
 					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
 					ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",

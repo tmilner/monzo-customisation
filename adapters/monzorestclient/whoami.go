@@ -1,4 +1,4 @@
-package monzoclient
+package monzorestclient
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ type WhoAmIResponse struct {
 	UserId        string `json:"user_id"`
 }
 
-func (a *MonzoClient) WhoAmI(authToken string) (*WhoAmIResponse, error) {
+func (a *MonzoRestClient) WhoAmI(authToken string) (*WhoAmIResponse, error) {
 	body, err := a.processGetRequest("/ping/whoami", authToken)
 	if err != nil {
 		return nil, err

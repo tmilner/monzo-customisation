@@ -1,4 +1,4 @@
-package monzoclient
+package monzorestclient
 
 import (
 	"errors"
@@ -22,7 +22,7 @@ type Params struct {
 	ImageUrl string `json:"image_url"`
 }
 
-func (a *MonzoClient) CreateFeedItem(item *FeedItem, authToken string) error {
+func (a *MonzoRestClient) CreateFeedItem(item *FeedItem, authToken string) error {
 	form := url.Values{}
 	form.Add("account_id", item.AccountId)
 	form.Add("type", "basic")

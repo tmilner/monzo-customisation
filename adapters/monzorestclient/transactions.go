@@ -1,4 +1,4 @@
-package monzoclient
+package monzorestclient
 
 import (
 	"encoding/json"
@@ -53,7 +53,7 @@ type AddressResponse struct {
 	ShortFormatted string  `json:"short_formatted,omitempty"`
 }
 
-func (a *MonzoClient) GetTransactions(accountId string, authToken string) (*TransactionsResponse, error) {
+func (a *MonzoRestClient) GetTransactions(accountId string, authToken string) (*TransactionsResponse, error) {
 	body, err := a.processGetRequest("/transactions?expand[]=merchant&account_id="+accountId, authToken)
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (a *MonzoClient) GetTransactions(accountId string, authToken string) (*Tran
 	return &result, err
 }
 
-func (a *MonzoClient) GetTransactionsSinceTimestamp(accountId string, authToken string, timestamp string) (*TransactionsResponse, error) {
+func (a *MonzoRestClient) GetTransactionsSinceTimestamp(accountId string, authToken string, timestamp string) (*TransactionsResponse, error) {
 	log.Printf("Getting transactions for %s since %s", accountId, timestamp)
 	body, err := a.processGetRequest("/transactions?expand[]=merchant&account_id="+accountId+"&since="+timestamp, authToken)
 	if err != nil {

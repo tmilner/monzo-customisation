@@ -1,4 +1,4 @@
-package monzoclient
+package monzorestclient
 
 import (
 	"encoding/json"
@@ -17,7 +17,7 @@ type AuthResponse struct {
 	UserId       string `json:"user_id"`
 }
 
-func (a *MonzoClient) Authenticate(code string, clientId string, clientSecret string, redirectUri string) (*AuthResponse, error) {
+func (a *MonzoRestClient) Authenticate(code string, clientId string, clientSecret string, redirectUri string) (*AuthResponse, error) {
 	form := url.Values{}
 	form.Add("grant_type", "authorization_code")
 	form.Add("client_id", clientId)
@@ -28,7 +28,7 @@ func (a *MonzoClient) Authenticate(code string, clientId string, clientSecret st
 	return a.authRequest(form)
 }
 
-func (a *MonzoClient) RefreshAuth(auth string, clientId string, clientSecret string) (*AuthResponse, error) {
+func (a *MonzoRestClient) RefreshAuth(auth string, clientId string, clientSecret string) (*AuthResponse, error) {
 	form := url.Values{}
 	form.Add("grant_type", "refresh_token")
 	form.Add("client_id", clientId)
@@ -38,7 +38,7 @@ func (a *MonzoClient) RefreshAuth(auth string, clientId string, clientSecret str
 	return a.authRequest(form)
 }
 
-func (a *MonzoClient) authRequest(form map[string][]string) (*AuthResponse, error) {
+func (a *MonzoRestClient) authRequest(form map[string][]string) (*AuthResponse, error) {
 	res, err := a.client.PostForm("https://api.monzo.com/oauth2/token", form)
 	if err != nil {
 		log.Printf("Error posting for token %+v", err)

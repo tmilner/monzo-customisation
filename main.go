@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/tmilner/monzo-customisation/domain"
-	"github.com/tmilner/monzo-customisation/monzoclient"
+	"github.com/tmilner/monzo-customisation/adapters/monzorestclient"
+	"github.com/tmilner/monzo-customisation/application"
 	"log"
 	"net/http"
 	"os"
@@ -17,7 +17,7 @@ func main() {
 		log.Fatalln("Not enough arguments supplied")
 	}
 
-	config := &domain.Config{
+	config := &application.Config{
 		ClientId:     os.Args[1],
 		ClientSecret: os.Args[2],
 		URI:          os.Args[3],
@@ -25,7 +25,7 @@ func main() {
 		WebhookURI:   os.Args[3] + "/webhook",
 	}
 
-	client := monzoclient.CreateMonzoClient("https://api.monzo.com/", &http.Client{})
+	client := monzorestclient.CreateMonzoRestClient("https://api.monzo.com/", &http.Client{})
 
-	_ = domain.CreateMonzoCustomisation(client, config)
+	_ = application.CreateMonzoCustomisation(client, config)
 }

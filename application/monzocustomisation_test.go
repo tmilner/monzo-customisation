@@ -1,7 +1,7 @@
-package domain
+package application
 
 import (
-	"github.com/tmilner/monzo-customisation/monzoclient"
+	"github.com/tmilner/monzo-customisation/adapters/monzorestclient"
 	"github.com/twinj/uuid"
 	"reflect"
 	"sync"
@@ -12,11 +12,11 @@ import (
 func TestCreateMonzoApi(t *testing.T) {
 	type args struct {
 		config *Config
-		client *monzoclient.MonzoClient
+		client *monzorestclient.MonzoRestClient
 	}
 
 	config := &Config{}
-	client := &monzoclient.MonzoClient{}
+	client := &monzorestclient.MonzoRestClient{}
 
 	tests := []struct {
 		name string
@@ -56,7 +56,7 @@ func TestCreateMonzoApi(t *testing.T) {
 func TestMonzoApi_findUserForAccount(t *testing.T) {
 	type fields struct {
 		url          string
-		client       *monzoclient.MonzoClient
+		client       *monzorestclient.MonzoRestClient
 		clientConfig *Config
 		users        map[string]*User
 		usersLock    sync.RWMutex
@@ -131,7 +131,7 @@ func TestMonzoApi_findUserForAccount(t *testing.T) {
 	defer ctrl.Finish()
 
 	type fields struct {
-		client       *monzoclient.MonzoClient
+		client       *monzorestclient.MonzoRestClient
 		config       *Config
 		users        map[string]*User
 		usersLock    sync.RWMutex

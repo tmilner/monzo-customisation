@@ -1,4 +1,4 @@
-package monzoclient
+package monzorestclient
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func (a *MonzoClient) RegisterWebhook(accountId string, accessToken string, uri string) error {
+func (a *MonzoRestClient) RegisterWebhook(accountId string, accessToken string, uri string) error {
 	form := url.Values{}
 	form.Add("account_id", accountId)
 	form.Add("url", uri)

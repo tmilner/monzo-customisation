@@ -1,4 +1,4 @@
-package monzoclient
+package monzorestclient
 
 import (
 	"errors"
@@ -7,16 +7,16 @@ import (
 	"net/http"
 )
 
-type MonzoClient struct {
+type MonzoRestClient struct {
 	url    string
 	client *http.Client
 }
 
-func CreateMonzoClient(url string, client *http.Client) *MonzoClient {
-	return &MonzoClient{url: url, client: client}
+func CreateMonzoRestClient(url string, client *http.Client) *MonzoRestClient {
+	return &MonzoRestClient{url: url, client: client}
 }
 
-func (a *MonzoClient) processGetRequest(path string, authToken string) ([]byte, error) {
+func (a *MonzoRestClient) processGetRequest(path string, authToken string) ([]byte, error) {
 	req, err := http.NewRequest("GET", a.url+path, nil)
 
 	if err != nil {

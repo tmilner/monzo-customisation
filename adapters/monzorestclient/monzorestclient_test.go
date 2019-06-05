@@ -1,4 +1,4 @@
-package monzoclient
+package monzorestclient
 
 import (
 	"net/http"
@@ -17,18 +17,18 @@ func TestCreateMonzoClient(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *MonzoClient
+		want *MonzoRestClient
 	}{
 		{
 			name: "Client is created successfully",
 			args: args{url, client},
-			want: &MonzoClient{url, client},
+			want: &MonzoRestClient{url, client},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CreateMonzoClient(tt.args.url, tt.args.client); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CreateMonzoClient() = %v, want %v", got, tt.want)
+			if got := CreateMonzoRestClient(tt.args.url, tt.args.client); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("CreateMonzoRestClient() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -84,17 +84,17 @@ func TestMonzoClient_processGetRequest(t *testing.T) {
 				tt.server.Start()
 			}
 
-			a := &MonzoClient{
+			a := &MonzoRestClient{
 				url:    tt.server.URL,
 				client: &http.Client{},
 			}
 			got, err := a.processGetRequest(tt.args.path, tt.args.authToken)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("MonzoClient.processGetRequest() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("MonzoRestClient.processGetRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("MonzoClient.processGetRequest() = %v, want %v", got, tt.want)
+				t.Errorf("MonzoRestClient.processGetRequest() = %v, want %v", got, tt.want)
 			}
 		})
 	}
