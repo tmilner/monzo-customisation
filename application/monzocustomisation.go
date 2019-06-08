@@ -415,7 +415,7 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 			if !found {
 				dailyTotal = transaction.Amount
 			} else {
-				dailyTotal = dailyTotal.(int64) - transaction.Amount
+				dailyTotal = dailyTotal.(int64) + transaction.Amount
 			}
 			account.dailyTotal.Store(transCreated, dailyTotal)
 
