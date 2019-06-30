@@ -1,12 +1,14 @@
 package application
 
 import (
-	"github.com/tmilner/monzo-customisation/adapters/monzorestclient"
-	"github.com/twinj/uuid"
+	"net/http"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/tmilner/monzo-customisation/adapters/monzorestclient"
+	"github.com/twinj/uuid"
 )
 
 func TestCreateMonzoApi(t *testing.T) {
@@ -171,3 +173,121 @@ func TestMonzoApi_findUserForAccount(t *testing.T) {
 	}
 }
 */
+
+func TestMonzoCustomisation_handleTransaction(t *testing.T) {
+	type fields struct {
+		users        map[string]*User
+		usersLock    sync.RWMutex
+		accounts     map[string]*Account
+		accountsLock sync.RWMutex
+	}
+	type args struct {
+		transaction    *monzorestclient.TransactionDetailsResponse
+		expectedAmount int64
+	}
+	monzoclient := monzorestclient.CreateMonzoRestClient("localhost", &http.Client{})
+	config := &Config{
+		ClientId:     "TEST",
+		ClientSecret: "",
+		URI:          "",
+		RedirectUri:  "",
+		WebhookURI:   "",
+	}
+	var account *Account
+	user := &User{"User123", nil, []*Account{account}}
+	dateWithExistingTransactions := time.Date(1991, time.December, 04, 12, 04, 12, 0, time.UTC)
+	account = &Account{
+		id: "12345",
+		processedTransactions: sync.Map{},
+		dailyTotal:            sync.Map{},
+		closed:                false,
+		description:           "",
+		created:               "",
+		type_:                 "retail",
+		accountNumber:         "123456",
+		sortCode:              "04-00-04",
+		owners:                []Owner{{user.id, "123", "12"}},
+		user:                  user,
+	}
+	account.dailyTotal.Store(timeToDate(dateWithExistingTransactions), int64(-500))
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "Daily total is the same as the transaction amount if its the first of the day",
+			fields: fields{
+				users: map[string]*User{
+					user.id: user,
+				},
+				usersLock: sync.RWMutex{},
+				accounts: map[string]*Account{
+					account.id: account,
+				},
+				accountsLock: sync.RWMutex{},
+			},
+			args: args{
+				transaction: &monzorestclient.TransactionDetailsResponse{
+					AccountId:   account.id,
+					Amount:      -500,
+					Created:     time.Now(),
+					Currency:    "GBP",
+					Description: "Pret",
+					Id:          "123",
+					Settled:     "23423",
+					Category:    "food",
+				},
+				expectedAmount: -500,
+			},
+		},
+		{
+			name: "Daily total is updated for the transaction amount if there have already been transactions today",
+			fields: fields{
+				users: map[string]*User{
+					user.id: user,
+				},
+				usersLock: sync.RWMutex{},
+				accounts: map[string]*Account{
+					account.id: account,
+				},
+				accountsLock: sync.RWMutex{},
+			},
+			args: args{
+				transaction: &monzorestclient.TransactionDetailsResponse{
+					AccountId:   account.id,
+					Amount:      -500,
+					Created:     dateWithExistingTransactions,
+					Currency:    "GBP",
+					Description: "Pret",
+					Id:          "1432",
+					Settled:     "23423",
+					Category:    "food",
+				},
+				expectedAmount: -1000,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &MonzoCustomisation{
+				client:       monzoclient,
+				config:       config,
+				users:        tt.fields.users,
+				usersLock:    tt.fields.usersLock,
+				accounts:     tt.fields.accounts,
+				accountsLock: tt.fields.accountsLock,
+				ticker:       time.NewTicker(2 * time.Hour),
+				stateToken:   uuid.NewV4().String(),
+			}
+			a.handleTransaction(tt.args.transaction)
+			total, found := tt.fields.accounts[account.id].dailyTotal.Load(timeToDate(tt.args.transaction.Created))
+			if !found {
+				t.Error("Did not store an amount for today!")
+			}
+			if total.(int64) != tt.args.expectedAmount {
+				t.Errorf("daily total is inocrrect! Should be %d, is %d", tt.args.expectedAmount, total.(int64))
+			}
+		})
+	}
+}

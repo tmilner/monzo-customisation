@@ -1,7 +1,9 @@
 package monzorestclient
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 )
@@ -68,6 +70,24 @@ func (a *MonzoRestClient) GetTransactions(accountId string, authToken string) (*
 func (a *MonzoRestClient) GetTransactionsSinceTimestamp(accountId string, authToken string, timestamp string) (*TransactionsResponse, error) {
 	log.Printf("Getting transactions for %s since %s", accountId, timestamp)
 	body, err := a.processGetRequest("/transactions?expand[]=merchant&account_id="+accountId+"&since="+timestamp, authToken)
+	if err != nil {
+		return nil, err
+	}
+
+	var result TransactionsResponse
+	err = json.Unmarshal(body, &result)
+
+	return &result, err
+}
+
+func (a *MonzoRestClient) UpdateTransaction(transactionId string, authToken string, metadata map[string]string) (*TransactionsResponse, error) {
+	log.Printf("Updating transaction %s", transactionId)
+	var s string
+	for key, val := range metadata {
+		s = fmt.Sprintf("metadata[%s]=%s", key, val)
+	}
+	s = fmt.Sprintf("{%s}", s)
+	body, err := a.processPatchRequest("/transactions/"+transactionId, authToken, bytes.NewBufferString(s))
 	if err != nil {
 		return nil, err
 	}

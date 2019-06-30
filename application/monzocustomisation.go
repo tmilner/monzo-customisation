@@ -15,8 +15,10 @@ import (
 	"time"
 )
 
+//TODO [TM] Move response objects out of client impl and split up this into multiple files
 type MonzoClient interface {
 	GetTransactions(accountId string, authToken string) (*monzorestclient.TransactionsResponse, error)
+	UpdateTransaction(transactionId string, authToken string, metadata map[string]string) (*monzorestclient.TransactionsResponse, error)
 	GetTransactionsSinceTimestamp(accountId string, authToken string, timestamp string) (*monzorestclient.TransactionsResponse, error)
 	GetPots(authToken string) (*monzorestclient.PotsResponse, error)
 	GetBalance(accountId string, authToken string) (*monzorestclient.BalanceResponse, error)
@@ -398,7 +400,6 @@ func (a *MonzoCustomisation) webhookHandler(w http.ResponseWriter, req *http.Req
 		_, _ = io.WriteString(w, "Failed")
 		return
 	}
-	log.Printf("Recieved new transaction! %+v", result)
 	w.WriteHeader(http.StatusOK)
 	a.handleTransaction(&result.Data)
 }
@@ -407,6 +408,8 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 	a.accountsLock.Lock()
 	if account, found := a.accounts[transaction.AccountId]; found {
 		if _, found := account.processedTransactions.Load(transaction.Id); !found {
+
+			log.Printf("New Tranasaction! %v", transaction)
 
 			account.processedTransactions.Store(transaction.Id, transaction)
 			transCreated := timeToDate(transaction.Created)
@@ -420,6 +423,8 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 			account.dailyTotal.Store(transCreated, dailyTotal)
 
 			var params *monzorestclient.Params
+
+			log.Printf("Current Daily Total: %s (%s)", dailyTotal, transCreated)
 
 			if dailyTotal.(int64) < -5000 {
 				params = &monzorestclient.Params{
@@ -435,12 +440,24 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 				}
 			}
 
+			if transaction.Merchant.Name == "Tfl Cycle Hire" {
+				res, err := a.client.UpdateTransaction(transaction.Id, account.user.auth.AccessToken, map[string]string{"notes": "#cyceling"})
+				if err != nil {
+					log.Printf("Updated Boris Bike transaction. Res - %v", res)
+				}
+
+			}
+
 			if params != nil {
 				_ = a.createFeedItem(transaction.AccountId, params)
 			}
 
+		} else {
+			log.Println("Transaction already processed, not handling.")
 		}
 		a.accounts[transaction.AccountId] = account
+	} else {
+		log.Printf("Tried to process transaction for acount %s but account not found", transaction.AccountId)
 	}
 	a.accountsLock.Unlock()
 }
