@@ -105,7 +105,6 @@ func CreateMonzoCustomisation(client *monzorestclient.MonzoRestClient, config *C
 	errorChain := alice.New(loggerHandler, recoverHandler, timeoutHandler)
 
 	router := mux.NewRouter()
-	router.HandleFunc("/", genericIgnore)
 	router.HandleFunc("/webhook", monzo.webhookHandler).Methods("POST")
 	router.HandleFunc("/auth_return", monzo.authReturnHandler).Methods("GET")
 	router.HandleFunc("/auth_start", monzo.authHandler).Methods("GET")
@@ -116,16 +115,11 @@ func CreateMonzoCustomisation(client *monzorestclient.MonzoRestClient, config *C
 
 }
 
-func genericIgnore(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
-	_, _ = io.WriteString(w, "Get off my server you prick. You wont find anything here.")
-}
-
 func loggerHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		//start := time.Now()
+		start := time.Now()
 		h.ServeHTTP(w, r)
-		//log.Printf("new request: %s %s %v (from: %s)", r.Method, r.URL.Path, time.Since(start), r.Header.Get("X-Real-Ip"))
+		log.Printf("#### #### new request: %s %s %v (from: %s)", r.Method, r.URL.Path, time.Since(start), r.Header.Get("X-Real-Ip"))
 	})
 }
 
@@ -355,12 +349,15 @@ func (a *MonzoCustomisation) registerWebhook(accountId string) error {
 }
 
 func (a *MonzoCustomisation) authHandler(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	uri := "https://auth.monzo.com/?client_id=" + a.config.ClientId + "&redirect_uri=" + a.config.RedirectUri + "&response_type=code&state=" + a.stateToken
 
 	http.Redirect(w, r, uri, 303)
 }
 
 func (a *MonzoCustomisation) authReturnHandler(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	log.Println("Auth_Return received!")
 	code := r.URL.Query().Get("code")
 	stateReturned := r.URL.Query().Get("state")
@@ -391,6 +388,7 @@ func (a *MonzoCustomisation) authReturnHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (a *MonzoCustomisation) webhookHandler(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
 	decoder := json.NewDecoder(req.Body)
 	var result WebhookResponse
 	err := decoder.Decode(&result)
@@ -444,14 +442,14 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 			}
 
 			if transaction.Merchant.Name == "Tfl Cycle Hire" {
-				res, err := a.client.UpdateTransaction(transaction.Id, account.user.auth.AccessToken, map[string]string{"notes": "#cyceling"})
+				_, err := a.client.UpdateTransaction(transaction.Id, account.user.auth.AccessToken, map[string]string{"notes": "#cyceling"})
 				if err != nil {
-					log.Printf("Updated Boris Bike transaction. Res - %v", res)
+					log.Print("Updated Boris Bike transaction.")
 				}
 			} else if transaction.Merchant.Name == "Amoret Coffee" {
-				res, err := a.client.UpdateTransaction(transaction.Id, account.user.auth.AccessToken, map[string]string{"notes": "#coffee"})
+				_, err := a.client.UpdateTransaction(transaction.Id, account.user.auth.AccessToken, map[string]string{"notes": "#coffee"})
 				if err != nil {
-					log.Printf("Updated Amoret transaction. Res - %v", res)
+					log.Print("Updated Amoret transaction")
 				}
 			}
 
