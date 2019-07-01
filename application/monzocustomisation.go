@@ -123,9 +123,9 @@ func genericIgnore(w http.ResponseWriter, req *http.Request) {
 
 func loggerHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+		//start := time.Now()
 		h.ServeHTTP(w, r)
-		log.Printf("new request: %s %s %v (from: %s)", r.Method, r.URL.Path, time.Since(start), r.Header.Get("X-Real-Ip"))
+		//log.Printf("new request: %s %s %v (from: %s)", r.Method, r.URL.Path, time.Since(start), r.Header.Get("X-Real-Ip"))
 	})
 }
 
@@ -412,6 +412,7 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 			log.Printf("New Tranasaction! %v", transaction)
 
 			account.processedTransactions.Store(transaction.Id, transaction)
+			//TODO: Check if this is a pot transfer before counting towards the daily total.
 			transCreated := timeToDate(transaction.Created)
 
 			dailyTotal, found := account.dailyTotal.Load(transCreated)
@@ -427,12 +428,14 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 			log.Printf("Current Daily Total: %s (%s)", dailyTotal, transCreated)
 
 			if dailyTotal.(int64) < -5000 {
+				log.Println("Spent more than 50 at once! Chill")
 				params = &monzorestclient.Params{
 					Title:    "Spending a bit much aren't we?",
 					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
 					ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 				}
 			} else if transaction.Amount < -10000 {
+				log.Println("Spent more than 100 in a day! Big spender")
 				params = &monzorestclient.Params{
 					Title:    "What the fuck is this Mr Big Spender!",
 					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
@@ -445,15 +448,21 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 				if err != nil {
 					log.Printf("Updated Boris Bike transaction. Res - %v", res)
 				}
-
+			} else if transaction.Merchant.Name == "Amoret Coffee" {
+				res, err := a.client.UpdateTransaction(transaction.Id, account.user.auth.AccessToken, map[string]string{"notes": "#coffee"})
+				if err != nil {
+					log.Printf("Updated Amoret transaction. Res - %v", res)
+				}
 			}
 
 			if params != nil {
-				_ = a.createFeedItem(transaction.AccountId, params)
+				log.Println("Creating feed item.")
+				err := a.createFeedItem(transaction.AccountId, params)
+				if err != nil {
+					log.Printf("Error creating feed item for transaction: %s", transaction.Id)
+				}
 			}
 
-		} else {
-			log.Println("Transaction already processed, not handling.")
 		}
 		a.accounts[transaction.AccountId] = account
 	} else {
