@@ -312,15 +312,16 @@ func (a *MonzoCustomisation) refreshAuth() error {
 
 func (a *MonzoCustomisation) createFeedItem(accountId string, params *monzorestclient.Params) error {
 	a.accountsLock.RLock()
+	defer a.accountsLock.RUnlock()
 	account, found := a.accounts[accountId]
-	a.accountsLock.RUnlock()
 	if !found {
 		return errors.New("account not found")
 	}
 
 	a.usersLock.RLock()
+	defer a.usersLock.RUnlock()
+
 	authToken := account.user.auth.AccessToken
-	a.usersLock.RUnlock()
 
 	feedItem := &monzorestclient.FeedItem{
 		AccountId: accountId,
@@ -328,6 +329,8 @@ func (a *MonzoCustomisation) createFeedItem(accountId string, params *monzorestc
 		Url:       "http://tmilner.co.uk",
 		Params:    params,
 	}
+
+	log.Printf("Creating Feed Item: %+v", feedItem)
 
 	return a.client.CreateFeedItem(feedItem, authToken)
 }
