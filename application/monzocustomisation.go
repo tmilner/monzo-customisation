@@ -450,17 +450,19 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 
 			if dailyInfo.total < -5000 {
 				log.Println("Spent more than 50 at once! Chill")
+				spending := (dailyInfo.total / 100) * -1
 				params = &monzorestclient.Params{
 					Title:    "Spending a bit much aren't we?",
-					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyInfo.total),
+					Body:     fmt.Sprintf("You swpnt more than £50! Daily spend is at £%d! Chill your spending!", spending),
 					ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 				}
 			} else if transaction.Amount < -10000 && !dailyInfo.sent100QuidLimitNotification {
 				log.Println("Spent more than 100 in a day! Big spender")
 				dailyInfo = DailyInfo{total: dailyInfo.total, sent100QuidLimitNotification: true}
+				spending := (dailyInfo.total / 100) * -1
 				params = &monzorestclient.Params{
 					Title:    "What the fuck is this Mr Big Spender!",
-					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyInfo.total),
+					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", spending),
 					ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 				}
 			}
