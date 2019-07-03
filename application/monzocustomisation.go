@@ -67,7 +67,7 @@ type Auth struct {
 type Account struct {
 	id                    string
 	processedTransactions sync.Map
-	dailyTotal            sync.Map
+	dailyInfo             sync.Map
 	closed                bool
 	description           string
 	created               string
@@ -78,6 +78,10 @@ type Account struct {
 	user                  *User
 }
 
+type DailyInfo struct {
+	total                        int64
+	sent100QuidLimitNotification bool
+}
 type Owner struct {
 	UserId             string
 	PreferredName      string
@@ -157,9 +161,14 @@ func (a *MonzoCustomisation) findUserForAccount(accountId string) (*User, error)
 }
 
 func (a *MonzoCustomisation) processTodaysTransactions(userId string) {
+	defer a.usersLock.RUnlock()
+	defer a.accountsLock.Unlock()
+
 	a.usersLock.RLock()
+	a.accountsLock.Lock()
 
 	var user = a.users[userId]
+
 	var today = timeToDate(time.Now())
 
 	for _, acc := range user.accounts {
@@ -167,14 +176,16 @@ func (a *MonzoCustomisation) processTodaysTransactions(userId string) {
 		if err != nil {
 			log.Println("Error getting transactions for today! :( ")
 			return
+		} else {
+			log.Printf("Got transactison! %d", len(res.Transactions))
 		}
 
 		for _, transact := range res.Transactions {
-			a.handleTransaction(&transact)
+			a.handleTransaction(&transact, true, true)
 		}
 
-		if dailyTotal, found := acc.dailyTotal.Load(today); found {
-			log.Printf("Processed todays transactions [%d] for account %s. Total is: %d", len(res.Transactions), acc.type_, dailyTotal)
+		if dailyTotal, found := acc.dailyInfo.Load(today); found {
+			log.Printf("Processed todays transactions [%d] for account %s. Total is: %d", len(res.Transactions), acc.type_, dailyTotal.(DailyInfo).total)
 		} else {
 			log.Printf("Processed todays transactions [%d] for account %s. Found none.", len(res.Transactions), acc.type_)
 		}
@@ -188,10 +199,13 @@ func timeToDate(timestamp time.Time) string {
 }
 
 func (a *MonzoCustomisation) runBasicInfo(userId string) {
+	defer a.usersLock.RUnlock()
+	defer a.accountsLock.Unlock()
 	a.usersLock.RLock()
+	a.accountsLock.Lock()
+
 	user := a.users[userId]
 	authToken := a.users[userId].auth.AccessToken
-	a.usersLock.RUnlock()
 
 	log.Println("Retrieving pots:")
 	pots, err := a.client.GetPots(authToken)
@@ -222,7 +236,7 @@ func (a *MonzoCustomisation) runBasicInfo(userId string) {
 			}
 
 			log.Printf("Creating a feed item: %+v", params)
-			feedErr := a.createFeedItem(account.id, params)
+			feedErr := a.createFeedItem(account.id, params, true, true)
 			if feedErr != nil {
 				log.Printf("Feed error: %+v", feedErr)
 			}
@@ -237,6 +251,7 @@ func (a *MonzoCustomisation) runBasicInfo(userId string) {
 
 func (a *MonzoCustomisation) saveUserAndAccounts(response *Auth, usersLocked bool) error {
 	if !usersLocked {
+		defer a.usersLock.Unlock()
 		a.usersLock.Lock()
 	}
 	user := &User{
@@ -262,7 +277,7 @@ func (a *MonzoCustomisation) saveUserAndAccounts(response *Auth, usersLocked boo
 			account := &Account{
 				id: acc.Id,
 				processedTransactions: sync.Map{},
-				dailyTotal:            sync.Map{},
+				dailyInfo:             sync.Map{},
 				closed:                acc.Closed,
 				description:           acc.Description,
 				created:               acc.Created,
@@ -286,9 +301,6 @@ func (a *MonzoCustomisation) saveUserAndAccounts(response *Auth, usersLocked boo
 	}
 
 	a.users[response.UserId] = user
-	if !usersLocked {
-		a.usersLock.Unlock()
-	}
 
 	return nil
 }
@@ -311,16 +323,20 @@ func (a *MonzoCustomisation) refreshAuth() error {
 	return nil
 }
 
-func (a *MonzoCustomisation) createFeedItem(accountId string, params *monzorestclient.Params) error {
-	a.accountsLock.RLock()
-	defer a.accountsLock.RUnlock()
+func (a *MonzoCustomisation) createFeedItem(accountId string, params *monzorestclient.Params, hasAccountLock bool, hasUserReadLock bool) error {
+	if !hasAccountLock {
+		a.accountsLock.RLock()
+		defer a.accountsLock.RUnlock()
+	}
+	if !hasUserReadLock {
+		a.usersLock.RLock()
+		defer a.usersLock.RUnlock()
+	}
+
 	account, found := a.accounts[accountId]
 	if !found {
 		return errors.New("account not found")
 	}
-
-	a.usersLock.RLock()
-	defer a.usersLock.RUnlock()
 
 	authToken := account.user.auth.AccessToken
 
@@ -330,8 +346,6 @@ func (a *MonzoCustomisation) createFeedItem(accountId string, params *monzorestc
 		Url:       "http://tmilner.co.uk",
 		Params:    params,
 	}
-
-	log.Printf("Creating Feed Item: %+v", feedItem)
 
 	return a.client.CreateFeedItem(feedItem, authToken)
 }
@@ -403,11 +417,14 @@ func (a *MonzoCustomisation) webhookHandler(w http.ResponseWriter, req *http.Req
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	a.handleTransaction(&result.Data)
+	a.handleTransaction(&result.Data, false, false)
 }
 
-func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.TransactionDetailsResponse) {
-	a.accountsLock.Lock()
+func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.TransactionDetailsResponse, hasAccountLock bool, hasUserLock bool) {
+	if !hasAccountLock {
+		defer a.accountsLock.Unlock()
+		a.accountsLock.Lock()
+	}
 	if account, found := a.accounts[transaction.AccountId]; found {
 		if _, found := account.processedTransactions.Load(transaction.Id); !found {
 
@@ -417,33 +434,38 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 			//TODO: Check if this is a pot transfer before counting towards the daily total.
 			transCreated := timeToDate(transaction.Created)
 
-			dailyTotal, found := account.dailyTotal.Load(transCreated)
+			dailyInfoI, found := account.dailyInfo.Load(transCreated)
+			var dailyInfo DailyInfo
+
 			if !found {
-				dailyTotal = transaction.Amount
+				dailyInfo = DailyInfo{total: transaction.Amount, sent100QuidLimitNotification: false}
 			} else {
-				dailyTotal = dailyTotal.(int64) + transaction.Amount
+				dailyInfo = dailyInfoI.(DailyInfo)
+				dailyInfo = DailyInfo{total: dailyInfo.total + transaction.Amount, sent100QuidLimitNotification: dailyInfo.sent100QuidLimitNotification}
 			}
-			account.dailyTotal.Store(transCreated, dailyTotal)
 
 			var params *monzorestclient.Params
 
-			log.Printf("Current Daily Total: %d (%s)", dailyTotal.(int64), transCreated)
+			log.Printf("Current Daily Total: %d (%s)", dailyInfo.total, transCreated)
 
-			if dailyTotal.(int64) < -5000 {
+			if dailyInfo.total < -5000 {
 				log.Println("Spent more than 50 at once! Chill")
 				params = &monzorestclient.Params{
 					Title:    "Spending a bit much aren't we?",
-					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
+					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyInfo.total),
 					ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 				}
-			} else if transaction.Amount < -10000 {
+			} else if transaction.Amount < -10000 && !dailyInfo.sent100QuidLimitNotification {
 				log.Println("Spent more than 100 in a day! Big spender")
+				dailyInfo = DailyInfo{total: dailyInfo.total, sent100QuidLimitNotification: true}
 				params = &monzorestclient.Params{
 					Title:    "What the fuck is this Mr Big Spender!",
-					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyTotal.(int64)),
+					Body:     fmt.Sprintf("Daily spend is at %d! Chill your spending!", dailyInfo.total),
 					ImageUrl: "https://d33wubrfki0l68.cloudfront.net/673084cc885831461ab2cdd1151ad577cda6a49a/92a4d/static/images/favicon.png",
 				}
 			}
+
+			account.dailyInfo.Store(transCreated, dailyInfo)
 
 			if transaction.Merchant.Name == "Tfl Cycle Hire" {
 				log.Println("Boris Bikes!")
@@ -461,7 +483,7 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 
 			if params != nil {
 				log.Println("Creating feed item.")
-				err := a.createFeedItem(transaction.AccountId, params)
+				err := a.createFeedItem(transaction.AccountId, params, hasAccountLock, hasUserLock)
 				if err != nil {
 					log.Printf("Error creating feed item for transaction: %s", transaction.Id)
 				}
@@ -473,5 +495,4 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 	} else {
 		log.Printf("Tried to process transaction for acount %s but account not found", transaction.AccountId)
 	}
-	a.accountsLock.Unlock()
 }

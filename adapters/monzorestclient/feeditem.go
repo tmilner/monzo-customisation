@@ -59,13 +59,5 @@ func (a *MonzoRestClient) CreateFeedItem(item *FeedItem, authToken string) error
 		return errors.New("not 200 or 201")
 	}
 
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Println("Failed to read body")
-		return err
-	}
-	log.Printf("Created feed item successfully! %+v", body)
-
 	return nil
 }
