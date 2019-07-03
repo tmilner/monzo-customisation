@@ -26,13 +26,13 @@ func (a *MonzoRestClient) CreateFeedItem(item *FeedItem, authToken string) error
 	form := url.Values{}
 	form.Add("account_id", item.AccountId)
 	form.Add("type", "basic")
-	form.Add("url", item.Url)
 	form.Add("params[title]", item.Params.Title)
 	form.Add("params[body]", item.Params.Body)
 	form.Add("params[image_url]", item.Params.ImageUrl)
 
 	req, err := http.NewRequest("POST", a.url+"/feed", strings.NewReader(form.Encode()))
 	if err != nil {
+		log.Printf("Something went wrong saving feed item! (1)  %v", err)
 		return err
 	}
 
@@ -43,6 +43,7 @@ func (a *MonzoRestClient) CreateFeedItem(item *FeedItem, authToken string) error
 	res, lastErr := a.client.Do(req)
 
 	if lastErr != nil {
+		log.Printf("Something went wrong saving feed item! (2) %v", lastErr)
 		return lastErr
 	}
 

@@ -117,9 +117,9 @@ func CreateMonzoCustomisation(client *monzorestclient.MonzoRestClient, config *C
 
 func loggerHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+		//start := time.Now()
 		h.ServeHTTP(w, r)
-		log.Printf("#### #### new request: %s %s %v (from: %s)", r.Method, r.URL.Path, time.Since(start), r.Header.Get("X-Real-Ip"))
+		//log.Printf("#### #### new request: %s %s %v (from: %s)", r.Method, r.URL.Path, time.Since(start), r.Header.Get("X-Real-Ip"))
 	})
 }
 
@@ -394,8 +394,8 @@ func (a *MonzoCustomisation) webhookHandler(w http.ResponseWriter, req *http.Req
 	err := decoder.Decode(&result)
 
 	if err != nil {
-		log.Println("Error decoding webhook")
-		_, _ = io.WriteString(w, "Failed")
+		log.Printf("Error decoding webhook: %v", decoder)
+		http.NotFound(w, req)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -460,9 +460,10 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 					log.Printf("Error creating feed item for transaction: %s", transaction.Id)
 				}
 			}
-
+			a.accounts[transaction.AccountId] = account
+		} else {
+			log.Printf("Recieved duplicate webhook call: %v", transaction)
 		}
-		a.accounts[transaction.AccountId] = account
 	} else {
 		log.Printf("Tried to process transaction for acount %s but account not found", transaction.AccountId)
 	}
