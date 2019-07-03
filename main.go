@@ -11,7 +11,7 @@ import (
 func main() {
 	log.SetPrefix("[MONZO]")
 
-	log.Println("Starting!")
+	log.Println("Starting! [2] ")
 
 	if len(os.Args) != 4 {
 		log.Fatalln("Not enough arguments supplied")

@@ -165,6 +165,7 @@ func (a *MonzoCustomisation) processTodaysTransactions(userId string) {
 	for _, acc := range user.accounts {
 		res, err := a.client.GetTransactionsSinceTimestamp(acc.id, user.auth.AccessToken, today)
 		if err != nil {
+			log.Println("Error getting transactions for today! :( ")
 			return
 		}
 
@@ -426,7 +427,7 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 
 			var params *monzorestclient.Params
 
-			log.Printf("Current Daily Total: %s (%s)", dailyTotal, transCreated)
+			log.Printf("Current Daily Total: %d (%s)", dailyTotal.(int64), transCreated)
 
 			if dailyTotal.(int64) < -5000 {
 				log.Println("Spent more than 50 at once! Chill")
@@ -445,11 +446,13 @@ func (a *MonzoCustomisation) handleTransaction(transaction *monzorestclient.Tran
 			}
 
 			if transaction.Merchant.Name == "Tfl Cycle Hire" {
+				log.Println("Boris Bikes!")
 				_, err := a.client.UpdateTransaction(transaction.Id, account.user.auth.AccessToken, map[string]string{"notes": "#cyceling"})
 				if err != nil {
 					log.Print("Updated Boris Bike transaction.")
 				}
 			} else if transaction.Merchant.Name == "Amoret Coffee" {
+				log.Println("Coffeeeee")
 				_, err := a.client.UpdateTransaction(transaction.Id, account.user.auth.AccessToken, map[string]string{"notes": "#coffee"})
 				if err != nil {
 					log.Print("Updated Amoret transaction")
